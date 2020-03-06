@@ -11,19 +11,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "include/test_framework.hpp"
-
-
-
-//=============================================================================
-// TEST FIXTURE FUNCTIONS
-//=============================================================================
-
-//=============================================================================
-
-
 
 
 
@@ -71,24 +62,156 @@ void test_print_result (int result)
 
 
 //=============================================================================
+// TEST FIXTURE FUNCTIONS
+//=============================================================================
+
+/*
+ *
+ */
+TestFixture test_fixture_new (const char* name, void* object)
+{
+    TestFixture fixture = (TestFixture) malloc(sizeof(test_fixture_t));
+    fixture->name   = name;
+    fixture->object = object;
+
+    return fixture;
+}
+
+/*
+ *
+ */
+void test_fixture_free (TestFixture fixture)
+{
+    free(fixture->object);
+    free(fixture);
+}
+
+/*
+ *
+ */
+TestFixtures test_fixtures_new (const char* name)
+{
+    int i;
+
+    TestFixture* list = (TestFixture*) malloc(TEST_STDSIZE*sizeof(TestFixture));
+    for (i = 0; i < TEST_STDSIZE; i++)
+    {
+        list[i] = (TestFixture) malloc(sizeof(test_fixture_t));
+    }
+    
+    TestFixtures fixtures = (TestFixtures) malloc(sizeof(test_fixtures_t));
+    fixtures->name        = name;
+    fixtures->list        = list;
+    fixtures->size        = 0;
+    fixtures->total_size  = TEST_STDSIZE;
+    
+    return fixtures;
+}
+
+/*
+ *
+ */
+void test_fixtures_free (TestFixtures fixtures)
+{
+    int i;
+    for (i = 0; i < fixtures->total_size; i++) 
+    {
+        test_fixture_free(fixtures->list[i]);
+    }
+    free(fixtures);
+}
+
+/*
+ *
+ */
+void test_fixtures_push (TestFixtures fixtures, TestFixture fixture)
+{
+    int i;
+
+    if (fixtures->size == fixtures->total_size)
+    {
+        fixtures->total_size = fixtures->size * 2;
+        fixtures->list =
+            (TestFixture*) realloc(fixtures->list,fixtures->total_size*sizeof(TestFixture));
+        for (i = 0; i < fixtures->total_size-fixtures->size; i++)
+        {
+            fixtures->list[fixtures->size+i] = 
+                (TestFixture) malloc(sizeof(test_fixture_t));
+        }
+    }
+    else
+    {
+        fixtures->list[fixtures->size++] = fixture;
+    }
+}
+
+/*
+ *
+ */
+void test_fixtures_pop (TestFixtures fixtures)
+{
+
+}
+
+/*
+ *
+ */
+void test_fixtures_add (TestFixtures fixtures, TestFixture fixture, int position)
+{
+
+}
+
+/*
+ *
+ */
+void test_fixtures_remove (TestFixtures fixtures, int position)
+{
+
+}
+
+/*
+ *
+ */
+TestFixture test_fixtures_find (TestFixtures fixtures, const char* name)
+{
+    int i;
+    for (i = 0; i < fixtures->size; i++)
+    {
+        if (strcmp(fixtures->list[i]->name, name) == 0)
+        {
+            return fixtures->list[i];
+        }
+    }
+
+    return NULL;
+}
+
+//=============================================================================
+
+
+
+
+
+//=============================================================================
 // TEST CASE FUNCTIONS
 //=============================================================================
 
 /*
  *
  */
-test_case_t* test_case_new (const char* name, test_func_t function)
+TestCase test_case_new (const char* name, TestFunction function)
 {
-    test_case_t* tcase = (test_case_t*) malloc(sizeof(test_case_t));
+    TestCase tcase  = (TestCase) malloc(sizeof(test_case_t));
     tcase->name     = name;
     tcase->function = function;
+
     return tcase;
 }
 
 /*
  *
  */
-void test_case_free (test_case_t* tcase)
+void test_case_free (TestCase tcase)
 {
     free(tcase);
 }
@@ -96,7 +219,7 @@ void test_case_free (test_case_t* tcase)
 /*
  *
  */
-int test_case_run (test_case_t* tcase)
+int test_case_exec (TestCase tcase)
 {
     return tcase->function();
 }
@@ -104,7 +227,7 @@ int test_case_run (test_case_t* tcase)
 /*
  *
  */
-int test_case (test_case_t* tcase)
+int test_case_run (TestCase tcase)
 {
     int result;
 
@@ -112,7 +235,7 @@ int test_case (test_case_t* tcase)
         TEST_BOLD, tcase->name, TEST_DEFAULT
     );
     
-    result = test_case_run(tcase);
+    result = test_case_exec(tcase);
     test_print_result(result);
     fprintf(stdout, "\n");
 
@@ -132,29 +255,34 @@ int test_case (test_case_t* tcase)
 /*
  *
  */
-test_suite_t* test_suite_new (const char* name)
+TestSuite test_suite_new (const char* name)
 {
-    test_case_t** list = (test_case_t**) malloc(TEST_STDSIZE*sizeof(test_case_t*));
-    for (int i = 0; i < TEST_STDSIZE; i++) 
+    int i;
+
+    TestCase* list = (TestCase*) malloc(TEST_STDSIZE*sizeof(TestCase));
+    for (i = 0; i < TEST_STDSIZE; i++) 
     {
-        list[i] = (test_case_t*) malloc(sizeof(test_case_t));
+        list[i] = (TestCase) malloc(sizeof(test_case_t));
     }
 
-    test_suite_t* tsuite = (test_suite_t*) malloc(sizeof(test_suite_t));
-    tsuite->name         = name;
-    tsuite->cases        = list;
-    tsuite->size         = 0;
-    tsuite->total_size   = TEST_STDSIZE;
+    TestSuite suite = (TestSuite) malloc(sizeof(test_suite_t));
+    suite->name         = name;
+    suite->cases        = list;
+    suite->fixtures     = NULL;
+    suite->size         = 0;
+    suite->total_size   = TEST_STDSIZE;
 
-    return tsuite;
+    return suite;
 }
 
 /*
  *
  */
-void test_suite_free (test_suite_t* tsuite)
+void test_suite_free (TestSuite tsuite)
 {
-    for (int i = 0; i < tsuite->size; i++) {
+    int i;
+    for (i = 0; i < tsuite->size; i++) 
+    {
         test_case_free(tsuite->cases[i]);
     }
     free(tsuite);
@@ -163,17 +291,19 @@ void test_suite_free (test_suite_t* tsuite)
 /*
  *
  */
-void test_suite_push (test_suite_t* tsuite, test_case_t* tcase)
+void test_suite_push (TestSuite tsuite, TestCase tcase)
 {
+    int i;
+
     if (tsuite->size == tsuite->total_size)
     {
         tsuite->total_size = tsuite->size * 2;
         tsuite->cases =
-            (test_case_t**) realloc(tsuite->cases,tsuite->total_size*sizeof(test_case_t*));
-        for (int i = 0; i < tsuite->total_size-tsuite->size; i++)
+            (TestCase*) realloc(tsuite->cases,tsuite->total_size*sizeof(TestCase));
+        for (i = 0; i < tsuite->total_size-tsuite->size; i++)
         {
             tsuite->cases[tsuite->size+i] = 
-                (test_case_t*) malloc(sizeof(test_case_t));
+                (TestCase) malloc(sizeof(test_case_t));
         }
     }
     else
@@ -185,7 +315,7 @@ void test_suite_push (test_suite_t* tsuite, test_case_t* tcase)
 /*
  *
  */
-void test_suite_pop (test_suite_t* tsuite)
+void test_suite_pop (TestSuite tsuite)
 {
     // TODO
 }
@@ -193,7 +323,7 @@ void test_suite_pop (test_suite_t* tsuite)
 /*
  *
  */
-void test_suite_add (test_suite_t* tsuite, test_case_t* tcase)
+void test_suite_add (TestSuite tsuite, TestCase tcase)
 {
     // TODO
 }
@@ -201,7 +331,7 @@ void test_suite_add (test_suite_t* tsuite, test_case_t* tcase)
 /*
  *
  */
-void test_suite_remove (test_suite_t* tsuite)
+void test_suite_remove (TestSuite tsuite)
 {
     // TODO
 }
@@ -209,13 +339,13 @@ void test_suite_remove (test_suite_t* tsuite)
 /*
  *
  */
-int test_suite_exec (test_suite_t* tsuite)
+int test_suite_exec (TestSuite tsuite)
 {
-    int result = TEST_PASS;
+    int i, result = TEST_PASS;
 
-    for (int i = 0; i < tsuite->size; i++) 
+    for (i = 0; i < tsuite->size; i++) 
     {
-        result = test_case(tsuite->cases[i]) && result;
+        result = test_case_run(tsuite->cases[i]) && result;
     }
 
     return result;
@@ -224,7 +354,7 @@ int test_suite_exec (test_suite_t* tsuite)
 /*
  *
  */
-int test_suite_run (test_suite_t* suite)
+int test_suite_run (TestSuite suite)
 {
     int result;
 
@@ -252,15 +382,17 @@ int test_suite_run (test_suite_t* suite)
 /*
  *
  */
-test_t* test_new (const char* name)
+Test test_new (const char* name)
 {
-    test_suite_t** list = (test_suite_t**) malloc(TEST_STDSIZE * sizeof(test_suite_t*));
-    for (int i = 0; i < TEST_STDSIZE; i++) 
+    int i;
+
+    TestSuite* list = (TestSuite*) malloc(TEST_STDSIZE * sizeof(TestSuite));
+    for (i = 0; i < TEST_STDSIZE; i++) 
     {
-        list[i] = (test_suite_t*) malloc(sizeof(test_suite_t));
+        list[i] = (TestSuite) malloc(sizeof(test_suite_t));
     }
 
-    test_t* t = (test_t*) malloc(sizeof(test_t));
+    Test t = (Test) malloc(sizeof(test_t));
     t->name         = name;
     t->suites       = list;
     t->size         = 0;
@@ -272,9 +404,11 @@ test_t* test_new (const char* name)
 /*
  *
  */
-void test_free (test_t* t)
+void test_free (Test t)
 {
-    for (int i = 0; i < t->size; i++) {
+    int i;
+    for (i = 0; i < t->size; i++) 
+    {
         test_suite_free(t->suites[i]);
     }
     free(t);
@@ -283,17 +417,19 @@ void test_free (test_t* t)
 /*
  *
  */
-void test_push (test_t* t, test_suite_t* tsuite)
+void test_push (Test t, TestSuite tsuite)
 {
+    int i;
+
     if (t->size == t->total_size)
     {
         t->total_size = t->size * 2;
         t->suites =
-            (test_suite_t**) realloc(t->suites,t->total_size*sizeof(test_suite_t*));
-        for (int i = 0; i < t->total_size-t->size; i++)
+            (TestSuite*) realloc(t->suites,t->total_size*sizeof(TestSuite));
+        for (i = 0; i < t->total_size-t->size; i++)
         {
             t->suites[t->size+i] = 
-                (test_suite_t*) malloc(sizeof(test_suite_t));
+                (TestSuite) malloc(sizeof(test_suite_t));
         }
     }
     else
@@ -305,7 +441,7 @@ void test_push (test_t* t, test_suite_t* tsuite)
 /*
  *
  */
-void test_pop (test_t* t)
+void test_pop (Test t)
 {
     // TODO
 }
@@ -313,7 +449,7 @@ void test_pop (test_t* t)
 /*
  *
  */
-void test_add (test_t* t, test_suite_t* tsuite, int position)
+void test_add (Test t, TestSuite tsuite, int position)
 {
     // TODO
 }
@@ -321,7 +457,7 @@ void test_add (test_t* t, test_suite_t* tsuite, int position)
 /*
  *
  */
-void test_remove (test_t* t, int position)
+void test_remove (Test t, int position)
 {
     // TODO
 }
@@ -329,10 +465,10 @@ void test_remove (test_t* t, int position)
 /*
  *
  */
-int test_exec (test_t* t)
+int test_exec (Test t)
 {
-    int result = TEST_PASS;
-    for (int i = 0; i < t->size; i++) 
+    int i, result = TEST_PASS;
+    for (i = 0; i < t->size; i++) 
     {
         int res = test_suite_run(t->suites[i]);
         result = res && result;
@@ -344,7 +480,7 @@ int test_exec (test_t* t)
 /*
  *
  */
-int test_run (test_t* t)
+int test_run (Test t)
 {
     fprintf(stdout, "%s%s%s%s\n\n", 
         TEST_BOLD, TEST_BLUE, t->name, TEST_DEFAULT

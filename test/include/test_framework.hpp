@@ -52,9 +52,11 @@ typedef int(*test_func_t)(void);
 /*
  *  TEST SUITE FIXTURE TYPE
  */
-typedef struct {
+typedef struct 
+{
     const char* name;
-    void* object;
+    void*       object;
+
 } test_fixture_t;
 
 
@@ -62,19 +64,30 @@ typedef struct {
 /*
  *  LIST OF FIXTURES
  */
-typedef struct {
+typedef struct _test_fixtures_t
+{
+    const char*      name;
     test_fixture_t** list;
-    int size;
+    int              size;
+    int              total_size;
+
+    void(*create) (_test_fixtures_t*);
+    void(*destroy)(_test_fixtures_t*);
+
 } test_fixtures_t;
+
+typedef void(*test_fixtures_func_t)(test_fixtures_t*);
 
 
 
 /*
  *  TEST CASE TYPE
  */
-typedef struct {
-    test_func_t function;
+typedef struct _test_case_t
+{
     const char* name;
+    test_func_t function;
+
 } test_case_t;
 
 
@@ -82,27 +95,33 @@ typedef struct {
 /*
  *  TEST SUITE TYPE
  */
-typedef struct {
+typedef struct 
+{
     const char*      name;
     test_case_t**    cases;
     test_fixtures_t* fixtures;
-    int size;
-    int total_size;
+    int              size;
+    int              total_size;
+
 } test_suite_t;
 
 
 
 /*
- *  TEST STATS TYPE
+ *  TEST STATISTICS TYPE
  *  TODO
  */
-typedef struct {
+typedef struct 
+{
     // About cases
     int failed_cases;
     int passed_cases;
     // About suites
     int failed_suites;
     int passed_suites;
+    
+    // TODO
+
 } test_stats_t;
 
 
@@ -110,12 +129,28 @@ typedef struct {
 /*
  *  TEST TYPE
  */
-typedef struct {
-    const char* name;
-    test_suite_t** suites;
-    int size;
-    int total_size;
+typedef struct 
+{
+    const char*       name;
+    test_suite_t**    suites;
+    test_fixtures_t** fixtures;
+    int               size;
+    int               total_size;
+
 } test_t;
+
+
+
+/*
+ *  SPECIAL CLASS LIKE ALIASES
+ */
+typedef test_fixtures_func_t TestFixturesFunction;
+typedef test_func_t          TestFunction;
+typedef test_fixture_t*      TestFixture;
+typedef test_fixtures_t*     TestFixtures;
+typedef test_case_t*         TestCase;
+typedef test_suite_t*        TestSuite;
+typedef test_t*              Test;
 
 
 
@@ -141,27 +176,90 @@ void test_print_result (int result);
 
 
 //=============================================================================
+// TEST FIXTURE FUNCTIONS
+//=============================================================================
+
+/*
+ *
+ */
+TestFixture test_fixture_new (const char* name, void* object);
+
+/*
+ *
+ */
+void test_fixture_free (TestFixture fixture);
+
+/*
+ *
+ */
+TestFixtures test_fixtures_new (
+    const char* name,
+    TestFixturesFunction create,
+    TestFixturesFunction destroy
+);
+
+/*
+ *
+ */
+void test_fixtures_free (TestFixtures fixtures);
+
+/*
+ *
+ */
+void test_fixtures_push (TestFixtures fixtures, TestFixture fixture);
+
+/*
+ *
+ */
+void test_fixtures_pop ();
+
+/*
+ *
+ */
+void test_fixtures_add (TestFixtures fixtures, TestFixture fixture, int position);
+
+/*
+ *
+ */
+void test_fixtures_remove (TestFixtures fixtures, int position);
+
+/*
+ *
+ */
+TestFixture test_fixtures_find (TestFixtures fixtures, const char* name);
+
+//=============================================================================
+
+
+
+
+
+//=============================================================================
 // TEST CASE FUNCTIONS
 //=============================================================================
 /*
  *
  */
-test_case_t* test_case_new (const char* name, test_func_t function);
+TestCase test_case_new (const char* name, TestFunction function);
 
 /*
  *
  */
-void test_case_free (test_case_t* tcase);
+void test_case_free (TestCase tcase);
 
 /*
  *
  */
-int test_case_run (test_case_t* tcase);
+int test_case_exec (TestCase tcase);
+// New function prototype:
+// int test_case_exec (test_case_t* tcase, test_fixtures_t* fixtures);
 
 /*
  *
  */
-int test_case (test_case_t* tcase);
+int test_case_run (TestCase tcase);
+// New function prototype:
+// int test_case_run (test_case_t* tcase, test_fixtures_t* fixtures);
 
 //=============================================================================
 
@@ -176,42 +274,43 @@ int test_case (test_case_t* tcase);
 /*
  *
  */
-test_suite_t* test_suite_new (const char* name);
+TestSuite test_suite_new (const char* name);
 
 /*
  *
  */
-void test_suite_free (test_suite_t* tsuite);
+void test_suite_free (TestSuite tsuite);
 
 /*
  *
  */
-void test_suite_push (test_suite_t* tsuite, test_case_t* tcase);
+void test_suite_push (TestSuite tsuite, TestCase tcase);
 
 /*
  *
  */
-void test_suite_pop (test_suite_t* tsuite);
+void test_suite_pop (TestSuite tsuite);
 
 /*
  *
  */
-void test_suite_add (test_suite_t* tsuite, test_case_t* tcase);
+void test_suite_add (TestSuite tsuite, TestCase tcase);
 
 /*
  *
  */
-void test_suite_remove (test_suite_t* tsuite);
+void test_suite_remove (TestSuite tsuite);
 
 /*
  *
  */
-int test_suite_exec (test_suite_t* tsuite);
+// UPDATE:
+int test_suite_exec (TestSuite tsuite);
 
 /*
  *
  */
-int test_suite_run (test_suite_t* suite);
+int test_suite_run (TestSuite suite);
 
 //=============================================================================
 
@@ -226,42 +325,42 @@ int test_suite_run (test_suite_t* suite);
 /*
  *
  */
-test_t* test_new (const char* name);
+Test test_new (const char* name);
 
 /*
  *
  */
-void test_free (test_t* tsuite);
+void test_free (Test test);
 
 /*
  *
  */
-void test_push (test_t* t, test_suite_t* tsuite);
+void test_push (Test test, TestSuite suite);
 
 /*
  *
  */
-void test_pop (test_t* t);
+void test_pop (Test test);
 
 /*
  *
  */
-void test_add (test_t* t, test_suite_t* tsuite, int position);
+void test_add (Test test, TestSuite suite, int position);
 
 /*
  *
  */
-void test_remove (test_t* t, int position);
+void test_remove (Test test, int position);
 
 /*
  *
  */
-int test_exec (test_t* t);
+int test_exec (Test test);
 
 /*
  *
  */
-int test_run (test_t* t);
+int test_run (Test test);
 
 //=============================================================================
 
