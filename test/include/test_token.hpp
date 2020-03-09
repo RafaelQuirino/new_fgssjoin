@@ -1,16 +1,22 @@
 #ifndef __TEST_TOKEN_HPP__
 #define __TEST_TOKEN_HPP__
 
-#include "test_framework.hpp"
+// Test framework
+#include "ctest.hpp"
 
 /*
  *  Get TOKEN test suite
  */
-test_suite_t* test_token_getsuite ();
+TestSuite test_token_getsuite ();
+
+/*
+ *
+ */
+TestFixtures test_token_getfixtures ();
 
 /*
  *  Test suite functions
  */
-int test_token_function ();
+int test_token_function (TestFixtures fixtures);
 
 #endif /* __TEST_UTIL_HPP__ */

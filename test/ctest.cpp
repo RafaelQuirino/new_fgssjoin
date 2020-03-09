@@ -14,7 +14,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "include/test_framework.hpp"
+// Test framework
+#include "include/ctest.hpp"
 
 
 
@@ -25,7 +26,7 @@
 /*
  *
  */
-char* test_get_result (int result)
+char* test_get_resultstr (int result)
 {
     char* str = (char*) malloc(32 * sizeof(char));
 
@@ -50,7 +51,7 @@ char* test_get_result (int result)
  */
 void test_print_result (int result)
 {
-    char* str = test_get_result(result);
+    char* str = test_get_resultstr(result);
     fprintf(stdout, "%s", str);
     free(str);
 }
@@ -89,7 +90,10 @@ void test_fixture_free (TestFixture fixture)
 /*
  *
  */
-TestFixtures test_fixtures_new (const char* name)
+TestFixtures test_fixtures_new (
+    TestFixturesFunction create_fixtures,
+    TestFixturesFunction destroy_fixtures
+)
 {
     int i;
 
@@ -100,10 +104,11 @@ TestFixtures test_fixtures_new (const char* name)
     }
     
     TestFixtures fixtures = (TestFixtures) malloc(sizeof(test_fixtures_t));
-    fixtures->name        = name;
     fixtures->list        = list;
     fixtures->size        = 0;
     fixtures->total_size  = TEST_STDSIZE;
+    fixtures->create      = create_fixtures;
+    fixtures->destroy     = destroy_fixtures;
     
     return fixtures;
 }
@@ -183,7 +188,20 @@ TestFixture test_fixtures_find (TestFixtures fixtures, const char* name)
         }
     }
 
+    fprintf(stderr, "%sCTest error:%s fixture %s\"%s\"%s not found. Aborting.\n", 
+        TEST_RED, TEST_DEFAULT, TEST_YELLOW, name, TEST_DEFAULT
+    );
+    exit(1);
+
     return NULL;
+}
+
+/*
+ *
+ */
+void* test_fixtures_findobj (TestFixtures fixtures, const char* name)
+{
+    return test_fixtures_find(fixtures,name)->object;
 }
 
 //=============================================================================
@@ -219,15 +237,15 @@ void test_case_free (TestCase tcase)
 /*
  *
  */
-int test_case_exec (TestCase tcase)
+int test_case_exec (TestCase tcase, TestFixtures fixtures)
 {
-    return tcase->function();
+    return tcase->function(fixtures);
 }
 
 /*
  *
  */
-int test_case_run (TestCase tcase)
+int test_case_run (TestCase tcase, TestFixtures fixtures)
 {
     int result;
 
@@ -235,7 +253,7 @@ int test_case_run (TestCase tcase)
         TEST_BOLD, tcase->name, TEST_DEFAULT
     );
     
-    result = test_case_exec(tcase);
+    result = test_case_exec(tcase, fixtures);
     test_print_result(result);
     fprintf(stdout, "\n");
 
@@ -255,7 +273,7 @@ int test_case_run (TestCase tcase)
 /*
  *
  */
-TestSuite test_suite_new (const char* name)
+TestSuite test_suite_new (const char* name, TestFixtures fixtures)
 {
     int i;
 
@@ -271,6 +289,7 @@ TestSuite test_suite_new (const char* name)
     suite->fixtures     = NULL;
     suite->size         = 0;
     suite->total_size   = TEST_STDSIZE;
+    suite->fixtures     = fixtures;
 
     return suite;
 }
@@ -343,10 +362,22 @@ int test_suite_exec (TestSuite tsuite)
 {
     int i, result = TEST_PASS;
 
+    // Creating fixtures
+    if (!(tsuite->fixtures==NULL))
+        if (!(tsuite->fixtures->create==NULL))
+            tsuite->fixtures->create(tsuite->fixtures);
+
+    // Running each test case
+    // If anyone fail, we set the test result to FAIL
     for (i = 0; i < tsuite->size; i++) 
     {
-        result = test_case_run(tsuite->cases[i]) && result;
+        result = test_case_run(tsuite->cases[i], tsuite->fixtures) && result;
     }
+
+    // Destroying fixtures
+    if (!(tsuite->fixtures==NULL))
+        if (!(tsuite->fixtures->destroy==NULL))
+            tsuite->fixtures->destroy(tsuite->fixtures);
 
     return result;
 }

@@ -11,7 +11,7 @@
  */
 int main (int argc, char** argv)
 {
-    test_t* test = test_new("FGSSJOIN TEST");
+    Test test = test_new("FGSSJOIN TEST");
     test_push(test, test_io_getsuite());
     test_push(test, test_util_getsuite());
     test_push(test, test_qgram_getsuite());
@@ -19,7 +19,7 @@ int main (int argc, char** argv)
 
     int result = test_run(test);
 
-    fprintf(stdout, "Test result: %s\n", test_get_result(result));
+    fprintf(stdout, "RESULT: %s\n", test_get_resultstr(result));
     test_free(test);
 
     return 0;

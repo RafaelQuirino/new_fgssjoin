@@ -7,9 +7,9 @@
 /*
  *
  */
-test_suite_t* test_qgram_getsuite ()
+TestSuite test_qgram_getsuite ()
 {
-    test_suite_t* suite = test_suite_new("QGRAM");
+    TestSuite suite = test_suite_new("QGRAM", test_qgram_getfixtures());
     test_suite_push(suite, test_case_new("qgram_function", test_qgram_function));
 
     return suite;
@@ -18,15 +18,17 @@ test_suite_t* test_qgram_getsuite ()
 /*
  *
  */
-int test_qgram_function ()
+TestFixtures test_qgram_getfixtures ()
+{
+    return NULL;
+}
+
+/*
+ *
+ */
+int test_qgram_function (TestFixtures fixtures)
 {
     int result = TEST_PASS;
-
-    // SETTING FIXTURES
-
-    // TESTING FUNCTION
-
-    // CLEANING FIXTURES
     
     return result;
 }

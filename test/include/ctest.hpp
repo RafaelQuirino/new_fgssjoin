@@ -32,6 +32,7 @@
 #define TEST_BLUE    "\e[34m"
 #define TEST_MAGENTA "\e[95m"
 #define TEST_CYAN    "\e[96m"
+#define TEST_YELLOW  "\e[33m"
 
 
 
@@ -39,13 +40,6 @@
  *  INITIAL SIZE OF LISTS
  */
 #define TEST_STDSIZE 32
-
-
-
-/*
- *  TEST FUNCTION TYPE
- */
-typedef int(*test_func_t)(void);
 
 
 
@@ -76,7 +70,13 @@ typedef struct _test_fixtures_t
 
 } test_fixtures_t;
 
+
+
+/*
+ *  FUNCTION TYPES
+ */
 typedef void(*test_fixtures_func_t)(test_fixtures_t*);
+typedef int(*test_func_t)(test_fixtures_t*);
 
 
 
@@ -162,12 +162,12 @@ typedef test_t*              Test;
 /*
  *
  */
-char* test_get_result (int result);
+char* test_get_resultstr (int result);
 
 /*
  *
  */
-void test_print_result (int result);
+void test_print_resultstr (int result);
 
 //=============================================================================
 
@@ -193,9 +193,8 @@ void test_fixture_free (TestFixture fixture);
  *
  */
 TestFixtures test_fixtures_new (
-    const char* name,
-    TestFixturesFunction create,
-    TestFixturesFunction destroy
+    TestFixturesFunction create_fixtures,
+    TestFixturesFunction destroy_fixtures
 );
 
 /*
@@ -228,6 +227,11 @@ void test_fixtures_remove (TestFixtures fixtures, int position);
  */
 TestFixture test_fixtures_find (TestFixtures fixtures, const char* name);
 
+/*
+ *
+ */
+void* test_fixtures_findobj (TestFixtures fixtures, const char* name);
+
 //=============================================================================
 
 
@@ -250,16 +254,12 @@ void test_case_free (TestCase tcase);
 /*
  *
  */
-int test_case_exec (TestCase tcase);
-// New function prototype:
-// int test_case_exec (test_case_t* tcase, test_fixtures_t* fixtures);
+int test_case_exec (TestCase tcase, TestFixtures fixtures);
 
 /*
  *
  */
-int test_case_run (TestCase tcase);
-// New function prototype:
-// int test_case_run (test_case_t* tcase, test_fixtures_t* fixtures);
+int test_case_run (TestCase tcase, TestFixtures fixtures);
 
 //=============================================================================
 
@@ -274,7 +274,7 @@ int test_case_run (TestCase tcase);
 /*
  *
  */
-TestSuite test_suite_new (const char* name);
+TestSuite test_suite_new (const char* name, TestFixtures fixtures);
 
 /*
  *

@@ -7,9 +7,9 @@
 /*
  *
  */
-test_suite_t* test_util_getsuite ()
+TestSuite test_util_getsuite ()
 {
-    test_suite_t* suite = test_suite_new("UTIL");
+    TestSuite suite = test_suite_new("UTIL", test_util_getfixtures());
     test_suite_push(suite, test_case_new("util_function", test_util_function));
 
     return suite;
@@ -18,7 +18,15 @@ test_suite_t* test_util_getsuite ()
 /*
  *
  */
-int test_util_function ()
+TestFixtures test_util_getfixtures ()
+{
+    return NULL;
+}
+
+/*
+ *
+ */
+int test_util_function (TestFixtures fixtures)
 {
     int result = TEST_PASS;
 

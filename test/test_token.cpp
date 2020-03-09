@@ -7,9 +7,9 @@
 /*
  *
  */
-test_suite_t* test_token_getsuite ()
+TestSuite test_token_getsuite ()
 {
-    test_suite_t* suite = test_suite_new("TOKEN");
+    TestSuite suite = test_suite_new("TOKEN", test_token_getfixtures());
     test_suite_push(suite, test_case_new("token_function", test_token_function));
 
     return suite;
@@ -18,15 +18,17 @@ test_suite_t* test_token_getsuite ()
 /*
  *
  */
-int test_token_function ()
+TestFixtures test_token_getfixtures ()
+{
+    return NULL;
+}
+
+/*
+ *
+ */
+int test_token_function (TestFixtures fixtures)
 {
     int result = TEST_PASS;
-
-    // SETTING FIXTURES
-
-    // TESTING FUNCTION
-
-    // CLEANING FIXTURES
     
     return result;
 }
