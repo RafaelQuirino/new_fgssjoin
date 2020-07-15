@@ -1,0 +1,744 @@
+#!/bin/bash
+
+###############################################################################
+#  CBUILD - A build system for C/C++/CUDA projects
+###############################################################################
+#
+#   This script tries to compile all .c, .cpp and even .cu files ("--cuda"),
+#   linking all files with main functions in its own binary executable.
+#   It create its own build directory (unless "--build-dir=<dir>" is used),
+#   with bin/ and obj/ directories (for binaries and object files respectively)
+#   and some files, e.g. a Makefile and a CBuild.log file.
+#   It first gathers information about the files in the project's root
+#   directory, create a Makefile, and call it, passing several arguments
+#   with the information gathered by the script.
+#
+#   Philosophy behind the script is to try to build all the source files,
+#   recursively, in a given directory ("." if directory not given), finding
+#   files with the main function automatically, and generating the binary
+#   executables, all of this without the need to write any Makefile code,
+#   or any code (unlike CMake where you have to write CMakeLists.txt files).
+#
+#   To cope with specific include directories, libraries and compiler options,
+#   its possible to set several parameters related to the actual compilation
+#   and linkage processes.
+#
+#   Call "$cbuild --help" for running options.
+#
+#   +-----------+
+#   | TODO LIST |
+#   +-----------+
+#
+#   - Detect executables dependencies, to avoid rebuilding all of them
+#     every time any object get updated.
+#
+#   - Detect include headers for each source file and set them as dependencies
+#     for each object, individualy (the end of pattern rules ?).
+#
+#   - Detect variables, functions, etc., which causes "hidden" dependencies
+#     between objects (use nm ?).
+#
+###############################################################################
+
+#--------------------------------------
+# Configuration and initialization
+#--------------------------------------
+DEBUG=0
+VERBOSE="@"
+NEWLINE=""
+SRCPATH="."
+CBUILD="CBuildFiles"
+CUDA_PATH="/usr/local/cuda"
+C_COMP="gcc"
+C_COMP_DEFAULT=$C_COMP
+CPP_COMP="g++"
+CPP_COMP_DEFAULT=$CPP_COMP
+CUDA_COMP="$CUDA_PATH/bin/nvcc"
+CUDA_COMP_DEFAULT_STR="\$CUDA_PATH/bin/nvcc" # Must be identical to above line (except \$)
+CUDA_COMP_DEFAULT=$CUDA_COMP
+LINK_CMD="g++ -fPIC"
+LINK_CMD_DEFAULT=$LINK_CMD
+
+# Command-line arguments
+NUMARGS=$#
+# Total number of objects for make
+OBJECTS=$((0))
+# Default target, in case of no main
+CBUILD_TARGET=""
+#--------------------------------------
+
+#======================================
+# FLAGS AND ARGUMENTS FOR THE SYSTEM
+#======================================
+# Flags -------------------------------
+HELP_FLAG="--help"
+CUDA_FLAG="--cuda"
+DEBUG_FLAG="--debug"
+VERBOSE_FLAG="--verbose"
+#--------------------------------------
+
+# Argument flags ----------------------
+C_COMP_FLAG="--c-comp="
+CPP_COMP_FLAG="--cpp-comp="
+CUDA_COMP_FLAG="--cuda-comp="
+LINK_CMD_FLAG="--link-cmd="
+FLAGS="--flags="
+COMP_FLAGS="--comp-flags="
+LINK_FLAGS="--link-flags="
+# TODO .........................
+INCLUDE_FLAGS="--include-flags="
+#...............................
+CBUILD_FLAG="--build-dir="
+SCRIPT_FLAG="--script="
+CUDA_PATH_FLAG="--cuda-path="
+CUDA_FLAGS="--cuda-flags="
+# TODO .........................
+CUDA_LIB_FLAG="--cuda-lib="
+CUDA_INC_FLAG="--cuda-include="
+#...............................
+#--------------------------------------
+#======================================
+
+ARG_FLAGS=""
+ARG_COMP_FLAGS=""
+ARG_LINK_FLAGS=""
+ARG_SCRIPT_FLAG=""
+ARG_CUDA="false"
+ARG_CUDA_FLAGS=""
+
+if [ ! $NUMARGS == 0 ]; then
+	SRCPATHFLAG=1
+	COUNT=$((1))
+	for var in "$@"; do
+		if [[ $var == "$HELP_FLAG" ]]; then
+			printf "Usage: cbuild [proj-root-dir] [options]\n"
+			printf "    \"proj-root-dir\"       "
+			printf "Root directory for the project. \".\" if empty.\n"
+			printf "Options:\n"
+			printf "    $HELP_FLAG                "
+			printf "Display this information.\n"
+			printf "    $CUDA_FLAG                "
+			printf "Enables CUDA compilation and linkage (-I\$CUDA_PATH/include -L\$CUDA_PATH/lib64 -lcudart).\n"
+			printf "    $DEBUG_FLAG               "
+			printf "Display debug information (for cbuild development).\n"
+			printf "    $VERBOSE_FLAG             "
+			printf "Display compilation and linkage commands.\n"
+			printf "    $C_COMP_FLAG<CC>         "
+			printf "Sets the C compiler to be used. Defaults do \"$C_COMP_DEFAULT\".\n"
+			printf "    $CPP_COMP_FLAG<CXX>      "
+			printf "Sets the C++ compiler to be used. Defaults do \"$CPP_COMP_DEFAULT\".\n"
+			printf "    $CUDA_COMP_FLAG<NVCC>    "
+			printf "Sets the CUDA compiler to be used. Defaults do \"$CUDA_COMP_DEFAULT\".\n"
+			printf "    $LINK_CMD_FLAG<LINKCMD>  "
+			printf "Sets the linkage command to be used. Defaults do \"$LINK_CMD_DEFAULT\".\n"
+			printf "    $FLAGS<flags>       "
+			printf "String with the flags to be used in both compilation and linkage commands.\n"
+			printf "    $COMP_FLAGS<flags>  "
+			printf "String with the flags to be used in compilation commands only.\n"
+			printf "    $LINK_FLAGS<flags>  "
+			printf "String with the flags to be used in linkage commands only.\n"
+			printf "    $CUDA_PATH_FLAG<dir>     "
+			printf "CUDA installation path. Automatically sets \"--cuda\" flag.\n"
+			printf "    $CUDA_FLAGS<flags>  "
+			printf "String with the CUDA compilation flags. Automatically sets \"--cuda\" flag.\n"
+			printf "    $CBUILD_FLAG<dir>     "
+			printf "Build directory of choice. \"./CBuildFiles\" if empty.\n"
+			printf "    $SCRIPT_FLAG<name>       "
+			printf "Name of the build script to be generated. Not generated if empty.\n"
+			exit
+		fi
+		if [[ $var == "$CUDA_FLAG" ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_CUDA="true"
+		fi
+		if [[ $var == "$DEBUG_FLAG" ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			DEBUG=1
+		fi
+		if [[ $var == "$VERBOSE_FLAG" ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			VERBOSE=""
+			NEWLINE="printf \"\n\""
+		fi
+		if [[ $var == "$C_COMP_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			C_COMP=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$CPP_COMP_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			CPP_COMP=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$CUDA_COMP_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			CUDA_COMP=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$LINK_CMD_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			LINK_CMD=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$FLAGS"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_FLAGS=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$COMP_FLAGS"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_COMP_FLAGS=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$LINK_FLAGS"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_LINK_FLAGS=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$SCRIPT_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_SCRIPT_FLAG=$(echo $var | cut -d'=' -f 2)
+		fi
+		if [[ $var == "$CBUILD_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			firstString=$(echo $var | cut -d'=' -f 2)
+			secondString="$HOME"
+			CBUILD="${firstString/\~/$secondString}"
+		fi
+		if [[ $var == "$CUDA_PATH_FLAG"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			CUDA_PATH=$(echo $var | cut -d'=' -f 2)
+			ARG_CUDA="true"
+		fi
+		if [[ $var == "$CUDA_FLAGS"* ]]; then
+			if [ $COUNT -eq 1 ]; then
+				SRCPATHFLAG=0
+			fi
+			ARG_CUDA_FLAGS=$(echo $var | cut -d'=' -f 2)
+			ARG_CUDA="true"
+		fi
+		COUNT=$(($COUNT+1))
+	done # for var in "$@"; do
+
+	if [ $SRCPATHFLAG == 1 ]; then
+		firstString="$1"
+		secondString="$HOME"
+		SRCPATH="${firstString/\~/$secondString}"
+	fi
+fi
+
+# TABS CORRECTED UNTIL HERE
+
+if [ $DEBUG == 1 ]; then
+    echo "---"
+    echo "ARGUMENTS:"
+    echo "    SRCPATH         : "$SRCPATH
+    echo "    CLEANFLAG       : "$CLEANFLAG
+    echo "    ARG_FLAGS       : "$ARG_FLAGS
+    echo "    ARG_COMP_FLAGS  : "$ARG_COMP_FLAGS
+    echo "    ARG_LINK_FLAGS  : "$ARG_LINK_FLAGS
+    echo "    ARG_SCRIPT_FLAG : "$ARG_SCRIPT_FLAGS
+    echo "    CBUILD          : "$CBUILD
+fi
+
+#-------------------------------------------------------------------------------
+
+# The key directories
+SRC=$(echo $SRCPATH | sed 's:/*$::') # Remove trailing /'s
+ABSSRC=$(realpath $SRC)
+BLD=$CBUILD
+OBJ="obj"
+BIN="bin"
+
+#-------------------------------------------------------------------------------
+
+# Get src files recursively
+tSRCS=$(ls -R $SRC | awk '
+/:$/&&f{s=$0;f=0}
+/:$/&&!f{sub(/:$/,"");s=$0;f=1;next}
+NF&&f{ print s"/"$0 }' |grep '\.c$\|\.cpp$\|\.cu$')
+SRCS=""
+for s in $tSRCS; do
+    var=$(realpath -s --relative-to=$SRC $s)
+	if [ $ARG_CUDA == "true" ]; then
+    	SRCS="$var $SRCS"
+	else
+		if [ -z $(echo $var |grep '\.cu$') ]; then
+    		SRCS="$var $SRCS"
+		fi
+	fi
+done
+
+if [ $DEBUG == 1 ]; then
+    echo "SRCS: "
+    for s in $SRCS; do
+        echo "    "$s
+    done
+    echo "    Absolute path -> "$ABSSRC
+fi
+
+# Get dirs from the sources, removing duplicates
+DIRS=""
+for s in $SRCS; do
+    dir=$(dirname $s)
+    DIRS=$dir" "$DIRS
+done
+# Removing duplicate dirs (for dirs with more than one file)
+DIRS=$(echo "$DIRS" | awk '
+{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
+
+if [ $DEBUG == 1 ]; then
+    echo "DIRS: "
+    for d in $DIRS; do
+        echo "    "$d
+    done
+fi
+
+#-------------------------------------------------------------------------------
+
+# Detect files containing main functions
+EXECS=""
+for f in $SRCS; do
+	r=$(cat $SRC/$f|sed 's/^\/\/.*//g'|tr -d \\n|sed 's/\/\*\([^*]\|*[^\/]\)*\*\///g' \
+		|grep -E 'main\s*\([^\)]*\)')
+    if [ ! -z "$r" ]; then
+    	OBJECTS=$(($OBJECTS+1))
+        EXECS="$f $EXECS"
+    fi
+done
+
+if [ "$EXECS" == "" ]; then
+	CBUILD_TARGET="CBuild.target"
+fi
+
+if [ $DEBUG == 1 ]; then
+    echo "EXECS: "
+    for e in $EXECS; do
+        echo "    "$e
+    done
+fi
+
+# Get dirs from the executables, removing duplicates
+EXECDIRS=""
+for e in $EXECS; do
+    dir=$(dirname $e)
+    EXECDIRS=$dir" "$EXECDIRS
+done
+# Removing duplicate dirs (for dirs with more than one file)
+EXECDIRS=$(echo "$EXECDIRS" | awk '
+{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
+
+if [ $DEBUG == 1 ]; then
+    echo "EXECDIRS: "
+    for d in $EXECDIRS; do
+        echo "    "$d
+    done
+fi
+
+APPS=""
+for e in $EXECS; do
+	APPS="$BIN/$e.bin $APPS"
+done
+#-------------------------------------------------------------------------------
+
+# Build string with all sources, concat with '.o'
+OBJS=""
+for x in $SRCS; do
+	OBJECTS=$(($OBJECTS+1))
+    OBJS="$x.o "$OBJS
+done
+
+if [ $DEBUG == 1 ]; then
+    echo "OBJS: "
+    for o in $OBJS; do
+        echo "    "$o
+    done
+fi
+
+OBJS_NOMAIN=""
+for x in $SRCS; do
+    flag="0"
+    # Test whether $EXECS contains $x
+    [[ $EXECS =~ (^|[[:space:]])$x($|[[:space:]]) ]] && flag="1" || flag="0"
+    if [ $flag == "0" ]; then
+        OBJS_NOMAIN="$x.o "$OBJS_NOMAIN
+    fi
+done
+
+if [ $DEBUG == 1 ]; then
+    echo "OBJS_NOMAIN:"
+    for o in $OBJS_NOMAIN; do
+        echo "    "$o
+    done
+fi
+
+# Finding include files
+tINCS=$(ls -R $SRC | awk '
+/:$/&&f{s=$0;f=0}
+/:$/&&!f{sub(/:$/,"");s=$0;f=1;next}
+NF&&f{ print s"/"$0 }' |grep '\.h$\|\.hpp$\|\.cuh$')
+INCS=""
+for s in $tINCS; do
+    var=$(realpath -s --relative-to=$SRC $s)
+    INCS="$var $INCS"
+done
+# Get dirs from the includes, removing duplicates
+INCDIRS=""
+for s in $INCS; do
+    dir=$(dirname $s)
+    INCDIRS=$dir" "$INCDIRS
+done
+# Removing duplicate dirs (for dirs with more than one file)
+INCDIRS=$(echo "$INCDIRS" | awk '
+{for (i=1;i<=NF;i++) if (!a[$i]++) printf("%s%s",$i,FS)}{printf("\n")}')
+INCLUDES=""
+for d in $INCDIRS; do
+    INCLUDES="-I $ABSSRC/$d "$INCLUDES
+done
+
+if [ $DEBUG == 1 ]; then
+    echo "INCLUDES:"
+    for i in $INCLUDES; do
+        echo "    "$i
+    done
+fi
+
+if [ $DEBUG == 1 ]; then
+    echo "---"
+	echo ""
+fi
+
+#-------------------------------------------------------------------------------
+                                                                               #
+                                                                               #
+#===============================================================================
+#             Creating the build directory, Makefile and other files
+#                                 Calling make
+#===============================================================================
+                                                                               #
+                                                                               #
+#-------------------------------------------------------------------------------
+
+if [ -z "$OBJS" ]; then
+    echo -e "Nothing to build."
+    exit
+fi
+
+# Makefile code
+IFS='' read -r -d '' MKCODE <<"EOF"
+# Make arguments
+APPS              := $(EXECS)
+OBJS              := $(OBJS)
+INCS              := $(INC)
+OBJDIR            := $(OBJ)
+SRCDIR            := $(SRC)
+BINDIR            := $(BIN)
+OBJS_NOMAIN       := $(OBJS_NOMAIN)
+FLAGS             := $(ARGFLAG)
+COMP_FLAGS        := $(ARGCOMP)
+LINK_FLAGS        := $(ARGLINK)
+CUDA_FLAG         := $(CUDA)
+CUDA_INSTALL_PATH := $(CUDAPATH)
+CUDA_FLAGS        := $(CUDAFLAGS)
+CBUILD_TARGET     := $(CBUILD)
+DEBUG             := $(DEB)
+VERBOSE           := $(VERB)
+NEWLINE           := $(NL)
+TOTAL             := $(OBJECTS)
+C_COMP            := $(CCOMP)
+CPP_COMP          := $(CPPCOMP)
+CUDA_COMP         := $(CUDACOMP)
+LINK_CMD          := $(LINKCMD)
+
+ifeq ($(DEBUG), 1)
+$(info ---)
+$(info APPS              : $(APPS))
+$(info OBJS              : $(OBJS))
+$(info INCS              : $(INCS))
+$(info OBJDIR            : $(OBJDIR))
+$(info SRCDIR            : $(SRCDIR))
+$(info BINDIR            : $(BINDIR))
+$(info OBJS_NOMAIN       : $(OBJS_NOMAIN))
+$(info FLAGS             : $(FLAGS))
+$(info COMP_FLAGS        : $(COMP_FLAGS))
+$(info LINK_FLAGS        : $(LINK_FLAGS))
+$(info CUDA_FLAG         : $(CUDA_FLAG))
+$(info CUDA_INSTALL_PATH : $(CUDA_PATH))
+$(info CUDA_FLAGS        : $(CUDA_FLAGS))
+$(info CBUILD_TARGET     : $(CBUILD_TARGET))
+$(info DEBUG             : $(DEBUG))
+$(info VERBOSE           : $(VERBOSE))
+$(info NEWLINE           : $(NEWLINE))
+$(info TOTAL             : $(TOTAL))
+$(info C_COMP            : $(C_COMP))
+$(info CPP_COMP          : $(CPP_COMP))
+$(info CUDA_COMP         : $(CUDA_COMP))
+$(info LINK_CMD          : $(LINK_CMD))
+$(info ---)
+$(info )
+endif
+
+SHELL=/bin/bash
+
+#------------------------------------------------------------------------------
+# Trying to make a progress log
+#------------------------------------------------------------------------------
+ifneq ($(words $(MAKECMDGOALS)),1) # if no argument was given to make...
+.DEFAULT_GOAL = all # set the default goal to all
+%:                   # define a last resort default rule
+	@$(MAKE) $@ --no-print-directory -rRf $(firstword $(MAKEFILE_LIST)) # recursive make call, 
+else
+ifndef ECHO
+T := $(shell $(MAKE) $(MAKECMDGOALS) --no-print-directory \
+	-nrRf $(firstword $(MAKEFILE_LIST)) \
+	ECHO="COUNTTHIS" | grep -c "COUNTTHIS")
+N := x
+C = $(words $N)$(eval N := x $N)
+ECHO = echo -ne "[`expr $C '*' 100 / $T`%]"
+endif
+
+.PHONY: all clean $(CBUILD_TARGET)
+#------------------------------------------------------------------------------
+
+# Compilers
+CC   := $(C_COMP)
+CXX  := $(CPP_COMP)
+NVCC := $(CUDA_COMP)
+LINK := $(LINK_CMD)
+
+# Includes and libs
+INCLUDES   := $(INCS) -I $(SRCDIR)
+# LIB_COMMON := -lm
+LIB_COMMON :=
+
+# Common flags
+COMMONFLAGS += $(FLAGS)
+
+# CUDA info ----------------------------------------------------------------------------------------
+NVCC              := $(CUDA_INSTALL_PATH)/bin/nvcc
+FLAGS_CUDA        := --compiler-options "$(CUDA_FLAGS)"
+INCLUDES_CUDA     := $(INCLUDES) -I $(CUDA_INSTALL_PATH)/include
+LIB_CUDA          := $(LIB_COMMON) -L $(CUDA_INSTALL_PATH)/lib64 -lcudart
+#---------------------------------------------------------------------------------------------------
+
+# Link flags
+CULIB =
+ifeq ($(CUDA_FLAG), true)
+	CULIB = -L $(CUDA_INSTALL_PATH)/lib64 -lcudart
+endif
+LINKFLAGS = $(COMMONFLAGS) $(LIB_COMMON) $(CULIB)
+
+# Final flags for each compiler
+CFLAGS    += $(COMMONFLAGS) $(INCLUDES) $(LIB_COMMON)
+CXXFLAGS  += $(COMMONFLAGS) $(INCLUDES) $(LIB_COMMON) -std=c++0x
+NVCCFLAGS += $(COMMONFLAGS) $(FLAGS_CUDA) $(INCLUDES_CUDA) $(LIB_CUDA) -std=c++11
+
+# Cores
+DEFAULT = "\\033[0m"
+BOLD    = "\\e[1m"
+RED     = "\\e[31m"
+GREEN   = "\\e[92m"
+BLUE    = "\\e[34m"
+MAGENTA = "\\e[95m"
+CYAN    = "\\e[96m"
+
+LOGFILE  = "CBuild.log"
+
+# Compile .c files
+$(OBJDIR)/%.c.o: $(SRCDIR)/%.c
+	@$(ECHO)" $(DEFAULT)$(MAGENTA)COMPILING $(DEFAULT)$(@:obj/%.o=%) $(MAGENTA)INTO $(GREEN)$(CBUILD)/$@$(DEFAULT)\n";
+	@printf "$(CC) -c $< -o $@ $(CFLAGS) $(COMP_FLAGS)\n\n" >> $(LOGFILE)
+	$(VERBOSE)$(CC) -c $< -o $@ $(CFLAGS) $(COMP_FLAGS)
+	@$(NEWLINE)
+
+# Compile .cpp files
+$(OBJDIR)/%.cpp.o: $(SRCDIR)/%.cpp
+	@$(ECHO)" $(DEFAULT)$(MAGENTA)COMPILING $(DEFAULT)$(@:obj/%.o=%) $(MAGENTA)INTO $(GREEN)$(CBUILD)/$@$(DEFAULT)\n";
+	@printf "$(CXX) -c $< -o $@ $(CXXFLAGS) $(COMP_FLAGS)\n\n" >> $(LOGFILE)
+	$(VERBOSE)$(CXX) -c $< -o $@ $(CXXFLAGS) $(COMP_FLAGS)
+	@$(NEWLINE)
+
+# Compile .cu files
+$(OBJDIR)/%.cu.o: $(SRCDIR)/%.cu
+	@$(ECHO)" $(DEFAULT)$(MAGENTA)COMPILING $(DEFAULT)$(@:obj/%.o=%) $(MAGENTA)INTO $(GREEN)$(CBUILD)/$@$(DEFAULT)\n";
+	@printf "$(NVCC) -c $< -o $@ $(NVCCFLAGS) $(COMP_FLAGS)\n\n" >> $(LOGFILE)
+	$(VERBOSE)$(NVCC) -c $< -o $@ $(NVCCFLAGS) $(COMP_FLAGS)
+	@$(NEWLINE)
+
+# Main rule
+# all: $(APPS) $(CBUILD_TARGET) $(shell $(ECHO) "TEST")
+all: $(APPS) $(CBUILD_TARGET)
+	@echo > /dev/null
+
+# Cases with no source with main function
+$(CBUILD_TARGET): $(addprefix obj/,$(OBJS))
+
+# Create executables
+$(APPS): %: $(addprefix $(OBJDIR)/,$(OBJS))
+	@$(ECHO) "$(DEFAULT)$(MAGENTA)LINKING EXECUTABLE $(BOLD)$(GREEN)$@$(DEFAULT)\n";
+	@x="$@"; \
+	y="$${x/.bin/.o}"; \
+	mainobj="$${y/$(BINDIR)\//$(OBJDIR)\/}"; \
+	printf "$(LINK) -o $@ $$mainobj $(addprefix obj/,$(OBJS_NOMAIN)) $(LINKFLAGS) $(LINK_FLAGS)\n\n" >> $(LOGFILE); \
+	cat $$mainobj >> .cbuild.app;
+	$(VERBOSE)$(LINK) -o $@ $$(echo .cbuild.app) $(addprefix obj/,$(OBJS_NOMAIN)) $(LINKFLAGS) $(LINK_FLAGS)
+	@rm .cbuild.app
+	@$(NEWLINE)
+endif
+EOF
+
+#-------------------------------------------------------------------------------
+
+# Create build directory structure
+mkdir -p $BLD
+mkdir -p $BLD/$OBJ
+mkdir -p $BLD/$BIN
+for dir in $DIRS; do
+    mkdir -p $BLD/$OBJ/$dir;
+done
+for dir in $EXECDIRS; do
+    mkdir -p $BLD/$BIN/$dir;
+done
+touch $BLD/Makefile
+echo "$MKCODE" > $BLD/Makefile
+
+#-------------------------------------------------------------------------------
+
+# echo -e "\033[0m\e[1m\nBUILDING FROM  <- \e[94m$ABSSRC/\033[0m\n"
+OBJS_FILE=$(realpath $BLD)"/CBuild.objects"
+touch $OBJS_FILE
+for o in $OBJS; do
+	echo $o >> $OBJS_FILE
+done
+SORTED_OBJS_TMP=$(awk '{ print length, $0 }' $OBJS_FILE |sort -rn|cut -d' ' -f2-)
+SORTED_OBJS=""
+for o in $SORTED_OBJS_TMP; do
+	SORTED_OBJS="$o $SORTED_OBJS"
+done
+
+# Make arguments
+X1=$BIN
+X2=$ABSSRC
+X3=$OBJ
+X4=$SORTED_OBJS
+X5=$APPS
+X6=$OBJS_NOMAIN
+X7=$INCLUDES
+X8=$ARG_FLAGS
+X9=$ARG_COMP_FLAGS
+X10=$ARG_LINK_FLAGS
+X11=$ARG_CUDA
+X12=$CBUILD_TARGET
+X13=$DEBUG
+X14=$VERBOSE
+X15=$NEWLINE
+X16=$OBJECTS
+X17=$CUDA_PATH
+X18=$ARG_CUDA_FLAGS
+X19=$C_COMP
+X20=$CPP_COMP
+X21=$CUDA_COMP
+X22=$LINK_CMD
+
+# Enter Cbuild directory and call make with arguments
+cd $BLD
+#-------------------------------------------------------------------------------------------------
+# make
+#-------------------------------------------------------------------------------------------------
+MAKEOUTPUT=$(BIN=$X1 SRC=$X2 OBJ=$X3 OBJS=$X4 EXECS=$X5 OBJS_NOMAIN=$X6 INC=$X7 ARGFLAG=$X8 \
+ARGCOMP=$X9 ARGLINK=$X10 CUDA=$X11 CBUILD=$X12 DEB=$X13 VERB=$X14 NL=$X15 OBJECTS=$X16 \
+CUDAPATH=$X17 CUDAFLAGS=$X18 CCOMP=$X19 CPPCOMP=$X20 CUDACOMP=$X21 LINKCMD=$X22 \
+make 2>&1 | tee /dev/tty)
+#-------------------------------------------------------------------------------------------------
+cd ..
+
+# If "--script=" was set
+if [ ! -z $ARG_SCRIPT_FLAG ]; then
+    if [ -f $ABSSRC/$ARG_SCRIPT_FLAG ]; then
+        echo -e "\n$ARG_SCRIPT_FLAG already exists in $ABSSRC."
+        exit
+    fi
+    script=$(cat "$0")
+
+    firstString=$script
+    secondString="DEBUG=$DEBUG"
+    script="${firstString/DEBUG\=0/$secondString}"
+
+    firstString=$script
+    secondString="VERBOSE=$VERBOSE"
+    script="${firstString/VERBOSE\=\"\@\"/$secondString}"
+
+    firstString=$script
+    secondString="ARG_FLAGS=\"$ARG_FLAGS\""
+    script="${firstString/ARG_FLAGS=\"\"/$secondString}"
+
+    firstString=$script
+    secondString="ARG_COMP_FLAGS=\"$ARG_COMP_FLAGS\""
+    script="${firstString/ARG_COMP_FLAGS=\"\"/$secondString}"
+
+    firstString=$script
+    secondString="ARG_LINK_FLAGS=\"$ARG_LINK_FLAGS\""
+    script="${firstString/ARG_LINK_FLAGS=\"\"/$secondString}"
+
+    firstString=$script
+    secondString="CBUILD=\"$CBUILD\""
+    script="${firstString/CBUILD=\"CBuild\"/$secondString}"
+
+    firstString=$script
+    secondString="ARG_CUDA=\"$ARG_CUDA\""
+    script="${firstString/ARG_CUDA=\"false\"/$secondString}"
+
+	firstString=$script
+    secondString="CUDA_PATH=\"$CUDA_PATH\""
+    script="${firstString/CUDA_PATH=\"\/usr\/local\/cuda\"/$secondString}"
+
+	firstString=$script
+    secondString="ARG_CUDA_FLAGS=\"$ARG_CUDA_FLAGS\""
+    script="${firstString/ARG_CUDA_FLAGS=\"\"/$secondString}"
+
+    firstString=$script
+    secondString="C_COMP=\"$C_COMP\""
+    script="${firstString/C_COMP=\"$C_COMP_DEFAULT\"/$secondString}"
+
+    firstString=$script
+    secondString="CPP_COMP=\"$CPP_COMP\""
+    script="${firstString/CPP_COMP=\"$CPP_COMP_DEFAULT\"/$secondString}"
+
+    firstString=$script
+    secondString="CUDA_COMP=\"$CUDA_COMP\""
+    script="${firstString/CUDA_COMP=\"$CUDA_COMP_DEFAULT_STR\"/$secondString}"
+
+    firstString=$script
+    secondString="LINK_CMD=\"$LINK_CMD\""
+    script="${firstString/LINK_CMD=\"LINK_CMD_DEFAULT\"/$secondString}"
+
+    echo -e "\033[0m\e[1m\nADDING BUILD SCRIPT INTO \n  -> \e[94m$ABSSRC/\e[92m$ARG_SCRIPT_FLAG\033[0m"
+    echo "$script" > $ABSSRC/$ARG_SCRIPT_FLAG
+    chmod +x $ABSSRC/$ARG_SCRIPT_FLAG
+fi
+
+if [ -z "$MAKEOUTPUT" ]; then
+	echo -e "\033[0m\e[1mAlready up-to-date."
+else
+	echo -e "\033[0m\e[1m\nBUILT INTO -> \e[94m$(realpath $BLD)/\033[0m\n"
+fi
+#-------------------------------------------------------------------------------

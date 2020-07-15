@@ -27,6 +27,47 @@ bool compare_order (token_t a, token_t b)
 
 
 
+/* DOCUMENTATION
+ *
+ */
+unordered_map<unsigned long,token_t>
+tk_get_dict (vector< vector<string> > records)
+{
+	unordered_map<unsigned long,token_t> dict;
+
+	for (int i = 0; i < records.size(); i++)
+	{
+		for (int j = 0; j < records[i].size(); j++)
+		{
+			string qgram = records[i][j];
+			unsigned long hcode = qg_hash(qgram);
+
+			// First check if token is already in dictionary.
+            // If not, create it. If it is, increment frequency.
+            unordered_map<unsigned long,token_t>::const_iterator result;
+			result = dict.find(hcode);
+
+			// If entry not found in dictionary
+            if (result == dict.end()) {
+                token_t newtkn;
+				newtkn.qgram    = qgram;
+				newtkn.hash     = hcode;
+                newtkn.freq     = 1;
+                newtkn.doc_id   = -1;
+                newtkn.order_id = -1;
+                dict[hcode]     = newtkn;
+            }
+            else {
+                dict[hcode].freq += 1;
+            }
+		}
+	}
+
+	return dict;
+}
+
+
+
 /*
  * Build the token sets using the records and the dictionary. 
  * Returns the token sets.
@@ -105,9 +146,9 @@ unsigned int* tk_convert_tokensets (
 	unsigned int** pos_out, unsigned int** len_out
 )
 {
-	unsigned int n = tsets.size();
-	unsigned int* pos = (unsigned int*) malloc(n * sizeof(unsigned int));
-	unsigned int* len = (unsigned int*) malloc(n * sizeof(unsigned int));
+	unsigned int n      = tsets.size();
+	unsigned int* pos   = (unsigned int*) malloc(n * sizeof(unsigned int));
+	unsigned int* len   = (unsigned int*) malloc(n * sizeof(unsigned int));
 	unsigned int* lists = (unsigned int*) malloc(num_tokens * sizeof(unsigned int));
 
 	for (unsigned int i = 0; i < n; i++)
@@ -195,6 +236,25 @@ void tk_print_tsets (vector< vector<token_t> > tsets, int field)
 {
 	for (unsigned int i = 0; i < tsets.size(); i++)
 		tk_print_tset(tsets[i], field);
+}
+
+
+
+/* DOCUMENTATION
+ *
+ */
+void tk_print_dict (unordered_map<unsigned long,token_t> dict)
+{
+	for (pair<unsigned long,token_t> element : dict)
+    {
+		cout << "(" << element.first << ") :: " << endl;
+		cout << " \t qgram: ("   << element.second.qgram    << ")" << endl;
+		cout << " \t hash: "     << element.second.hash     << endl;
+		cout << " \t freq: "     << element.second.freq     << endl;
+		cout << " \t doc_id: "   << element.second.doc_id   << endl;
+		cout << " \t order_id: " << element.second.order_id << endl;
+		cout << endl;
+    }
 }
 
 

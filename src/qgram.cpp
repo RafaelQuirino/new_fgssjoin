@@ -6,6 +6,17 @@
 /* DOCUMENTATION
  *
  */
+unsigned long qg_hash (string qgram)
+{
+	char* qg = (char*) qgram.c_str();
+	return ut_sdbm_hash(qg);
+}
+
+
+
+/* DOCUMENTATION
+ *
+ */
 vector<string> qg_get_record (string str, int qgramsize)
 {
 	vector<string> record;
@@ -50,7 +61,7 @@ vector< vector<string> > qg_get_records (vector<string> data, int qgramsize)
 	vector< vector<string> > records;
 	for (int i = 0; i < data.size(); i++)
 	{
-		records.push_back( qg_get_record (data[i], qgramsize) );
+		records.push_back(qg_get_record(data[i], qgramsize));
 	}
 
 	unsigned long t1 = ut_get_time_in_microseconds();
@@ -128,15 +139,4 @@ void qg_print_sets (vector< vector<unsigned long> > sets)
 		qg_print_set(sets[i]);
 		printf("\n");
 	}
-}
-
-
-
-/* DOCUMENTATION
- *
- */
-unsigned long qg_hash (string qgram)
-{
-	char* qg = (char*) qgram.c_str();
-	return ut_sdbm_hash(qg);
 }

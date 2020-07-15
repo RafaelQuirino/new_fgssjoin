@@ -49,7 +49,15 @@ typedef struct token_t
 
 
 /* DOCUMENTATION
- * 
+ * TODO
+ */
+unordered_map<unsigned long,token_t>
+tk_get_dict (vector< vector<string> > records);
+
+
+
+/* DOCUMENTATION
+ * TODO
  */ 
 vector< vector<token_t> > // Token sets
 tk_get_tokensets (
@@ -77,10 +85,12 @@ void tk_copy_token  (token_t* dst, token_t* src);
 void tk_print_token (token_t tkn);
 void tk_print_tset  (vector<token_t> tset, int field);
 void tk_print_tsets (vector< vector<token_t> > tsets, int field);
+void tk_print_dict (unordered_map<unsigned long,token_t> dict);
+
 
 
 /* DOCUMENTATION
- * 
+ * TODO
  */
 void tk_sort_freq (
     unsigned int* freqs, int* idx_freqs, int setsize
@@ -89,7 +99,7 @@ void tk_sort_freq (
 
 
 /* DOCUMENTATION
- * 
+ * TODO
  */
 //-----------------------------------------------------------------------------
 void tk_get_orders (vector< vector<token_t> >& tsets);
@@ -119,7 +129,7 @@ tk_sort_sets (vector< vector<token_t> >& tsets);
 
 
 /* DOCUMENTATION
- *  
+ * TODO
  */
 void tk_sort_freq (vector< vector<token_t> >& tsets);
 

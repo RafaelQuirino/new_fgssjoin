@@ -83,7 +83,7 @@ void ut_print_separator (const char*, int size);
 /* DOCUMENTATION
  *
  */
-unsigned ut_bernstein ( void *key, int len );
+unsigned ut_bernstein (void *key, int len);
 
 
 
@@ -105,13 +105,6 @@ unsigned long ut_djb2_hash (char *str);
  *
  */
 unsigned long ut_sdbm_hash (char *str);
-
-
-
-/* DOCUMENTATION
- *
- */
-vector<string> ut_split (const string &s, char delim, vector<string> &elems);
 
 
 
