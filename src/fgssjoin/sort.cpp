@@ -63,9 +63,9 @@ void quicksort_aux_1 (
     if ( l < r )
     {
         // divide and conquer
-        j = partition_1(vec, arr2, l, r);
-        quicksort_aux_1(vec, arr2, l, j-1);
-        quicksort_aux_1(vec, arr2, j+1, r);
+        j = partition_1(vec, arr2,   l, r  );
+        quicksort_aux_1(vec, arr2,   l, j-1);
+        quicksort_aux_1(vec, arr2, j+1, r  );
     }
 }
 

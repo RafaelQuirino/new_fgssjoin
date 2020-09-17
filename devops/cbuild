@@ -427,16 +427,16 @@ if [ $DEBUG == 1 ]; then
 	echo ""
 fi
 
-#-------------------------------------------------------------------------------
-                                                                               #
-                                                                               #
-#===============================================================================
-#             Creating the build directory, Makefile and other files
-#                                 Calling make
-#===============================================================================
-                                                                               #
-                                                                               #
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------#
+#                                                                              #
+#                                                                              #
+#==============================================================================#
+#             Creating the build directory, Makefile and other files           #
+#                                 Calling make                                 #
+#==============================================================================#
+#                                                                              #
+#                                                                              #
+#------------------------------------------------------------------------------#
 
 if [ -z "$OBJS" ]; then
     echo -e "Nothing to build."
@@ -504,8 +504,8 @@ SHELL=/bin/bash
 #------------------------------------------------------------------------------
 ifneq ($(words $(MAKECMDGOALS)),1) # if no argument was given to make...
 .DEFAULT_GOAL = all # set the default goal to all
-%:                   # define a last resort default rule
-	@$(MAKE) $@ --no-print-directory -rRf $(firstword $(MAKEFILE_LIST)) # recursive make call, 
+%:                  # define a last resort default rule
+	@$(MAKE) $@ --no-print-directory -rRf $(firstword $(MAKEFILE_LIST)) # recursive make call
 else
 ifndef ECHO
 T := $(shell $(MAKE) $(MAKECMDGOALS) --no-print-directory \
@@ -552,7 +552,7 @@ CFLAGS    += $(COMMONFLAGS) $(INCLUDES) $(LIB_COMMON)
 CXXFLAGS  += $(COMMONFLAGS) $(INCLUDES) $(LIB_COMMON) -std=c++0x
 NVCCFLAGS += $(COMMONFLAGS) $(FLAGS_CUDA) $(INCLUDES_CUDA) $(LIB_CUDA) -std=c++11
 
-# Cores
+# Colors
 DEFAULT = "\\033[0m"
 BOLD    = "\\e[1m"
 RED     = "\\e[31m"
@@ -661,6 +661,9 @@ X22=$LINK_CMD
 
 # Enter Cbuild directory and call make with arguments
 cd $BLD
+# Create and add datetime to log file
+echo -e "$(date)\n" > "CBuild.log"
+echo -e "$(pwd)\n" >> "CBuild.log"
 #-------------------------------------------------------------------------------------------------
 # make
 #-------------------------------------------------------------------------------------------------
@@ -737,7 +740,7 @@ if [ ! -z $ARG_SCRIPT_FLAG ]; then
 fi
 
 if [ -z "$MAKEOUTPUT" ]; then
-	echo -e "\033[0m\e[1mAlready up-to-date."
+	echo -e "\033[0m\e[1mAlready up-to-date.\033[0m"
 else
 	echo -e "\033[0m\e[1m\nBUILT INTO -> \e[94m$(realpath $BLD)/\033[0m\n"
 fi
