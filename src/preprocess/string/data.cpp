@@ -14,16 +14,16 @@
 vector<string>
 dat_get_input_data (string file_path, int input_size)
 {
-    if (input_size == 0) fprintf (stderr, "\tReading %s...\n", file_path.c_str());
-	else fprintf (stderr, "\tReading %d lines from %s...\n", input_size, file_path.c_str());
-	unsigned long t0 = ut_get_time_in_microseconds();
+    // if (input_size == 0) fprintf (stderr, "\tReading %s...\n", file_path.c_str());
+	// else fprintf (stderr, "\tReading %d lines from %s...\n", input_size, file_path.c_str());
+	// unsigned long t0 = ut_get_time_in_microseconds();
 
 	vector<string> input;
 	if (input_size == 0) input = io_getlines (file_path);
 	else input = io_getnlines (file_path, input_size);
 
-	unsigned long t1 = ut_get_time_in_microseconds();
-	fprintf (stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
+	// unsigned long t1 = ut_get_time_in_microseconds();
+	// fprintf (stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
 
     return input;
 }
@@ -45,7 +45,7 @@ char dat_easytolower(char in){
  *
  */
 vector<string>
-dat_get_proc_data (vector<string> input_data)
+dat_get_proc_data (vector<string>& input_data)
 {
     // I hope this makes a copy...
     vector<string> proc_data = input_data;
@@ -64,4 +64,27 @@ dat_get_proc_data (vector<string> input_data)
     fprintf (stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
 
     return proc_data;
+}
+
+
+
+/* DOCUMENTATION
+ *
+ */
+void
+dat_proc_data (vector<string>& input_data)
+{
+
+    // fprintf (stderr, "\tProcessing data...\n");
+    // unsigned long t0 = ut_get_time_in_microseconds();
+
+    for (unsigned i = 0; i < input_data.size(); i++) {
+        transform (
+            input_data[i].begin(), input_data[i].end(), input_data[i].begin(),
+            dat_easytolower
+        );
+    }
+
+    // unsigned long t1 = ut_get_time_in_microseconds();
+    // fprintf (stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
 }

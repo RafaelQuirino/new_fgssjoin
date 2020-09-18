@@ -27,8 +27,6 @@
 	#include <mach/mach.h>
 #endif
 
-
-
 using namespace std;
 
 

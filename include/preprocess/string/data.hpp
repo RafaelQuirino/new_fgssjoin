@@ -26,7 +26,15 @@ dat_get_input_data (string file_path, int input_size);
  *
  */
 vector<string>
-dat_get_proc_data (vector<string> input_data);
+dat_get_proc_data (vector<string>& input_data);
+
+
+
+/* DOCUMENTATION
+ *
+ */
+void
+dat_proc_data (vector<string>& input_data);
 
 
 

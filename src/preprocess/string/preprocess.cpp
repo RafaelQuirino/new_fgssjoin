@@ -1,124 +1,74 @@
-/*    
-    // CONSTANTS
-    string file_path(argv[1]);
-    int input_size = 0;
-    int qgram_size = atoi(argv[2]);
+#include "preprocess.hpp"
+#include "data.hpp"
+#include "qgram.hpp"
+
+using namespace std;
 
 
-    // VARIABLES
-    unsigned long                        n_sets;
-    unsigned long                        n_terms;
-    unsigned long                        n_tokens;
-    vector<string>                       raw_data;
-    vector<string>                       proc_data;
-    vector<size_t>                       doc_index;
-    vector< vector<string> >             docs;
-    unordered_map<unsigned long,token_t> dict;
-    vector< vector<token_t> >            tsets;
+
+/*
+ *  Documentation
+ */
+vector<string> 
+pp_get_data (string filepath)
+{
+    return dat_get_input_data(filepath, 0);
+}
 
 
-    // MEASURING PERFORMANCE (in multiple leves)
-    unsigned long t0, t1, t00, t01, t000, t001;
-    double total_time;
+
+/*
+ *  Documentation
+ */
+void 
+pp_proc_data (vector<string>& data)
+{
+    dat_proc_data(data);
+}
 
 
-    t0 = ut_get_time_in_microseconds();
+
+/*
+ *  Documentation
+ */
+vector< vector<string> > 
+pp_get_qgrams (vector<string>& data, int qgramsize)
+{
+    return qg_get_records(data, qgramsize);
+}
 
 
-    // READING DATA AND CREATING RECORDS ---------------------------------------
-    fprintf(stderr, "Reading data and creating records...\n");
-    t00 = ut_get_time_in_microseconds();
 
-    // READING INPUT DATA
-    raw_data = dat_get_input_data(file_path, input_size);
-
-    printf("\traw_data size: %zu\n", raw_data.size());
-
-    // PROCESSING DATA
-    proc_data = dat_get_proc_data(raw_data);
-
-    // CREATING QGRAM RECORDS
-    docs = qg_get_records(proc_data, qgram_size);
-
-    t01 = ut_get_time_in_microseconds();
-    fprintf(stderr, "> Done in %gms.\n\n", ut_interval_in_miliseconds(t00, t01));
-    //--------------------------------------------------------------------------
-
-    // qg_print_records(docs);
+/*
+ *  Documentation
+ */
+vector< vector<unsigned long> > 
+pp_calc_hashes (vector< vector<string> >& qgrams)
+{
+    return qg_get_sets(qgrams);
+}
 
 
-    // CREATING TOKEN DICTIONARY -----------------------------------------------
-    fprintf(stderr, "Creating token dictionary...\n");
-    t00 = ut_get_time_in_microseconds();
 
-    dict = tk_get_dict(docs);
-
-    n_sets   = docs.size();
-    n_terms  = dict.size();
-    n_tokens = 0;
-    for (int i = 0; i < docs.size(); i++)
-    {
-        n_tokens += docs[i].size();
-    }
-
-    t01 = ut_get_time_in_microseconds();
-    fprintf(stderr, "> Done in %gms.\n\n", ut_interval_in_miliseconds(t00, t01));
-
-    fprintf(stderr, "n_sets  : %lu\n", n_sets);
-    fprintf(stderr, "n_terms : %lu\n", n_terms);
-    fprintf(stderr, "n_tokens: %lu\n\n", n_tokens);
-    //--------------------------------------------------------------------------
-
-    // tk_print_dict(dict);
+// /*
+//  *  Documentation
+//  */
+// unordered_map<unsigned long, unsigned int>
+// pp_get_dict (vector< vector<unsigned long> >& hashes)
+// {
+//     return NULL;
+// }
 
 
-    // CREATING TOKEN SETS -----------------------------------------------------
-    fprintf(stderr, "Creating token sets...\n");
-    t00 = ut_get_time_in_microseconds();
 
-    tsets = tk_get_tokensets(dict, docs, doc_index);
-
-    t01 = ut_get_time_in_microseconds();
-    fprintf(stderr, "> Done in %gms.\n\n", ut_interval_in_miliseconds(t00, t01));
-    //--------------------------------------------------------------------------
-
-    // tk_print_tsets(tsets, ORDER_ID);
-
-
-    // SORTING AND PREPARING TOKENSETS -----------------------------------------
-    fprintf (stderr, "Preparing token sets...\n");
-    t00 = ut_get_time_in_microseconds();
-
-    // Sort sets in decreasing size order.
-    fprintf(stderr, "\tSorting corpus by set by size...\n");
-    t000 = ut_get_time_in_microseconds();
-
-    doc_index = tk_sort_sets (tsets);
-
-    t001 = ut_get_time_in_microseconds();
-    fprintf (stderr, "\t> Done. It took %gms.\n",
-        ut_interval_in_miliseconds (t000, t001)
-    );
-
-    // fprintf (stderr, "\tSorting each set by term frequency...\n");
-    // t000 = ut_get_time_in_microseconds();
-
-    // tk_sort_freq (tsets);
-
-    // t001 = ut_get_time_in_microseconds();
-    // fprintf(stderr, "\t> Done. It took %gms.\n",
-    //     ut_interval_in_miliseconds (t000, t001)
-    // );
-
-    t01 = ut_get_time_in_microseconds();
-    fprintf (stderr, "> Done in %gms.\n\n", ut_interval_in_miliseconds (t00, t01));
-    //--------------------------------------------------------------------------
-
-
-    t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, 
-        "Pre-processing %s took %gms.\n\n", 
-        file_path.c_str(), 
-        ut_interval_in_miliseconds(t0, t1)
-    );
-*/
+// /*
+//  *  Documentation
+//  */
+// vector< vector<unsigned int> >
+// pp_get_sets (
+//     vector< vector<unsigned long> >& hashes,
+//     unordered_map<unsigned long, unsigned int>& dict
+// )
+// {
+//     return NULL;
+// }

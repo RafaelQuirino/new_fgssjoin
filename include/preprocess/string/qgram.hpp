@@ -45,7 +45,7 @@ vector<string> qg_get_record (string str, int qgramsize);
 /* DOCUMENTATION
  * TODO
  */
-vector< vector<string> > qg_get_records (vector<string> data, int qgramsize);
+vector< vector<string> > qg_get_records (vector<string>& data, int qgramsize);
 
 
 
@@ -53,7 +53,7 @@ vector< vector<string> > qg_get_records (vector<string> data, int qgramsize);
  * TODO
  */
 vector< vector<unsigned long> >
-qg_get_sets (vector< vector<string> > recs);
+qg_get_sets (vector< vector<string> >& recs);
 
 
 

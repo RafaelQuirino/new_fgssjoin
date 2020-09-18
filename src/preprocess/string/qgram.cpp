@@ -53,10 +53,10 @@ vector<string> qg_get_record (string str, int qgramsize)
 /* DOCUMENTATION
  *
  */
-vector< vector<string> > qg_get_records (vector<string> data, int qgramsize)
+vector< vector<string> > qg_get_records (vector<string>& data, int qgramsize)
 {
-	fprintf (stderr, "\tCreating %d-gram records...\n", qgramsize);
-    unsigned long t0 = ut_get_time_in_microseconds();
+    // fprintf (stderr, "\tCreating %d-gram records...\n", qgramsize);
+    // unsigned long t0 = ut_get_time_in_microseconds();
 
 	vector< vector<string> > records;
 	for (int i = 0; i < data.size(); i++)
@@ -64,8 +64,8 @@ vector< vector<string> > qg_get_records (vector<string> data, int qgramsize)
 		records.push_back(qg_get_record(data[i], qgramsize));
 	}
 
-	unsigned long t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
+    // unsigned long t1 = ut_get_time_in_microseconds();
+    // fprintf(stderr, "\t> Done in %gms.\n", ut_interval_in_miliseconds (t0,t1));
 
 	return records;
 }
@@ -76,7 +76,7 @@ vector< vector<string> > qg_get_records (vector<string> data, int qgramsize)
  *
  */
 vector< vector<unsigned long> >
-qg_get_sets (vector< vector<string> > recs)
+qg_get_sets (vector< vector<string> >& recs)
 {
 	vector< vector<unsigned long> > sets;
 
