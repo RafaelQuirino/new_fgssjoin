@@ -222,7 +222,7 @@ void sort_based_on_first (vector<T> &v_1st, vector<T> &v_2nd)
 int main (int argc, char** argv)
 {
     cli_args_t* args = get_cli_args(argc, argv);
-    // print_cli_args(args);
+    print_cli_args(args);
 
     string filepath1, filepath2;
     if (strcmp(args->cmd, PREPROCESS_SELFJOIN) == 0) {
@@ -242,7 +242,7 @@ int main (int argc, char** argv)
     // ut_print_str_vec(data);
 
     // Doc
-    vector< vector<string> > qgrams = pp_get_qgrams(data, 3);
+    vector< vector<string> > qgrams = pp_get_qgrams(data, args->qgram);
     data.clear();
     // qg_print_records(qgrams);
 
@@ -265,6 +265,9 @@ int main (int argc, char** argv)
     // Create T by flattening hashes
     vector<unsigned long> T = flatten(hashes);
     hashes.clear();
+    size_t N = T.size();
+    fprintf(stdout, "Number of tokens: %zu\n", N);
+    fflush(stdout);
     // // Testing
     // cout << "T:\n";
     // for (int i = 0; i < T.size(); i++)
@@ -274,7 +277,6 @@ int main (int argc, char** argv)
     // Creating T' and Ti'
     vector<unsigned long> T_prime = T;
     vector<size_t> Ti_prime = sort_with_index(T_prime);
-    size_t N = T_prime.size();
     // // Testing
     // cout << "T_prime:\n";
     // for (int i = 0; i < N; i++)
@@ -306,14 +308,16 @@ int main (int argc, char** argv)
     // for (int i = 0; i < Dt.size(); i++) {
     //     cout << Dt[i] << ": " << Df[i] << " [" << i << "]" << endl;
     // }
-    cout << endl;
+    // cout << endl;
     T_prime.clear();
     Dt.clear(); // * Comment this in production
 
     // Now Dt', Df', Di' and Idx
     // (well, actually only Di' and Idx)
     vector<size_t> Di_prime = sort_index(Df);
-    int N_dict = Df.size();
+    size_t N_dict = Df.size();
+    fprintf(stdout, "Number of terms: %zu\n", N_dict);
+    fflush(stdout);
     vector<size_t> Idx(N_dict);
     Idx[0] = 0;
     for (int i = 1; i < N_dict; i++)
