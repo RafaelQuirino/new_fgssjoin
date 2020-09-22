@@ -37,6 +37,28 @@ void filter_k_int (unsigned int *dst, const int *src, int *nres, int n)
 /*
  *  DOCUMENTATION
  */
+__global__ 
+void filter_k_ushort (
+    unsigned int *dst, 
+    unsigned int *src, 
+    const unsigned short *pred, 
+    int *nres, 
+    int n
+) 
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int i = idx; i < n; i += blockDim.x * gridDim.x) 
+    {
+        if (pred[i] > 0)
+            dst[atomicAdd(nres, 1)] = src[i];
+    }
+}
+
+
+
+/*
+ *  DOCUMENTATION
+ */
 // __global__ 
 // void filter_k_2 (unsigned int *dst, const short *src, int *nres, int n) 
 // {
