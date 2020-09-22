@@ -288,7 +288,7 @@ int main (int argc, char** argv)
 
     // Now Dt and Df 
     // (actually i don't need Dt...)
-    vector<unsigned long> Dt; // * Comment this in production
+    //vector<unsigned long> Dt; // * Comment this in production
     vector<unsigned long> Df;
     unsigned long curritem  = T_prime[0];
     unsigned long currcount = -1;
@@ -298,7 +298,7 @@ int main (int argc, char** argv)
         currcount += 1;
 
         if (item != curritem || i == N-1) {
-            Dt.push_back(curritem); // * Comment this in production
+            //Dt.push_back(curritem); // * Comment this in production
             Df.push_back(currcount);
             curritem = item;
             currcount = 0;
@@ -310,7 +310,7 @@ int main (int argc, char** argv)
     // }
     // cout << endl;
     T_prime.clear();
-    Dt.clear(); // * Comment this in production
+    //Dt.clear(); // * Comment this in production
 
     // Now Dt', Df', Di' and Idx
     // (well, actually only Di' and Idx)
@@ -332,10 +332,6 @@ int main (int argc, char** argv)
     for (int i = 0; i < N_dict; i++)
         Tid[Di_prime[i]] = i;
 
-    // // Testing
-    // for (int i = 0; i < N; i++)
-    //     cout << "(" << T[i] << ") ";
-    // cout << endl << endl;
     // Finally, assign Tid's for every token in T
     for (int i = 0; i < N_dict; i++) {
         for (int j = Idx[i]; j <= Idx[i]+Df[i]; j++) {
@@ -346,6 +342,16 @@ int main (int argc, char** argv)
     // for (int i = 0; i < N; i++)
     //     cout << "(" << T[i] << ") ";
     // cout << endl << endl;
+    
+    // Convert to c arrays and write .sets file
+    // TODO
+
+    // Clearing memory
+    Idx.clear();
+    Df.clear();
+    T.clear();
+    Ti_prime.clear();
+    Tid.clear();
     //-------------------------------------------------------------------------
 
 	return 0;
