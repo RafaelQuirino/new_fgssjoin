@@ -71,7 +71,7 @@ void print_inverted_index (Index invindex, sets_t* sets)
 	for (int i = 0; i < num_terms; i++) {
 		int pos = i == 0 ? 0 : index[i-1];
 		int len = count[i];
-		fprintf(stderr, "term: (%d)\n", entries[pos].term_id);
+		fprintf(stderr, "term: [%d], size: %d\n", entries[pos].term_id, len);
 		for (int j = 0; j < len; j++)
 			fprintf(stderr, "(%u) ", sets->id[entries[pos + j].set_id]);
 		fprintf(stderr, "\n\n");

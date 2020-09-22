@@ -33,7 +33,7 @@ void get_grid_config_block (dim3 &grid, dim3 &threads, int n)
         //Adjust the grid dimensions based on the device properties
         int num_blocks = n; //1024 * 2 * devProp.multiProcessorCount;
         lgrid = dim3(num_blocks);
-        lthreads = dim3(devProp.maxThreadsPerBlock / 1);
+        lthreads = dim3(devProp.maxThreadsPerBlock / 4);
         flag = 1;
     }
     grid = lgrid;
@@ -48,20 +48,38 @@ void __gpuAssert (cudaError_t stat, int line, std::string file) {
     }
 }
 
-/*
-__device__ float atomicAddFloat (float* address, float val)
+
+
+// https://forums.developer.nvidia.com/t/how-to-use-atomiccas-to-implement-atomicadd-short-trouble-adapting-programming-guide-example/22712
+__device__ short atomicAddShort(short* address, short val)
+
 {
-    int* address_as_ull = (int*)address;
-    int old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __float_as_int(val +
-                               __int_as_float(assumed)));
-    } while (assumed != old);
-    return __int_as_float(old);
+
+    unsigned int *base_address = (unsigned int *)((size_t)address & ~2);
+
+    unsigned int long_val = ((size_t)address & 2) ? ((unsigned int)val << 16) : (unsigned short)val;
+
+unsigned int long_old = atomicAdd(base_address, long_val);
+
+    if((size_t)address & 2) {
+
+        return (short)(long_old >> 16);
+
+    } else {
+
+        unsigned int overflow = ((long_old & 0xffff) + long_val) & 0xffff0000;
+
+        if (overflow)
+
+            atomicSub(base_address, overflow);
+
+        return (short)(long_old & 0xffff);
+
+    }
+
 }
-//*/
+
+
 
 /*
 __device__ double atomicAdd(double* address, double val)

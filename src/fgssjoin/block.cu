@@ -18,7 +18,7 @@ void print_separator ()
 /*
  *  DOCUMENTATION
  */
-int get_block_size (float threshold, char verbose) 
+int get_block_size (sets_t* sets, float threshold, char verbose) 
 {
     size_t uCurAvailMemoryInBytes;
     size_t uTotalMemoryInBytes;
@@ -49,10 +49,13 @@ int get_block_size (float threshold, char verbose)
         // cuCtxDetach( context ); // Destroy context
     // }
 
-    float limit = 0.8; // Percentage of available memory to take
-    int block_size = floor(floor(sqrt((float)uCurAvailMemoryInBytes/6)) * limit);
+    float limit = 0.9; // Percentage of available memory to take
+    int block_size = floor(floor(sqrt((float)uCurAvailMemoryInBytes/8)) * limit);
     if (limit == 0.0)
         block_size = 1;
+
+    if (block_size >= sets->num_sets)
+        block_size = sets->num_sets;
 
     return block_size;
 }
@@ -75,7 +78,7 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
     double t;
 
     // Getting the block size -----------------------------
-    int block_size = get_block_size(threshold, verbose);
+    int block_size = get_block_size(sets, threshold, verbose);
     if (verbose)
         fprintf(stderr, "block_size: %d\n", block_size);
     //-----------------------------------------------------
@@ -91,11 +94,11 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
     unsigned int candsize = block_size * block_size;
 
     int* d_compidx;                // index for filter_k compaction
-    short* d_partial_scores;       // partial scores in filtering step
+    int* d_partial_scores;         // partial scores in filtering step
     unsigned int* d_comp_buckets;  // filtered candidates (buckets)
 
     gpu(cudaMalloc(&d_compidx, sizeof(int)));
-    gpu(cudaMalloc(&d_partial_scores, candsize * sizeof(short)));
+    gpu(cudaMalloc(&d_partial_scores, candsize * sizeof(int)));
     gpu(cudaMalloc(&d_comp_buckets, candsize * sizeof(unsigned int)));
     //------------------------------------------------------------------------------
 
@@ -142,7 +145,7 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
 
             unsigned int *d_candidates, csize;
 
-            filtering_block (
+            filtering_block_new (
                 sets, inv_index,
                 d_partial_scores, d_comp_buckets, d_compidx,
                 candsize, threshold, q_offset, i_offset, block_size, bsize,

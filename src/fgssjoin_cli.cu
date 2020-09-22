@@ -82,6 +82,8 @@ int main (int argc, char** argv)
     fprintf(stderr, "=== BEGIN JOIN (TIMER STARTED) ===\n");
     t0 = ut_get_time_in_microseconds();
 
+    cudaSetDevice(0);
+
     // Build inverted index
     Index index = inverted_index(sets, threshold, verbose);
     fprintf(stderr, "# Inverted Index Entries: %d\n", index.num_entries);

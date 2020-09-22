@@ -13,7 +13,7 @@
  */
 __host__
 void checking_block (
-	short* d_partial_scores,
+	int* d_partial_scores,
 	unsigned int* d_buckets, sets_t* sets, float threshold, unsigned int csize, 
 	unsigned int q_offset, unsigned int i_offset, unsigned int block_size,
 	unsigned int** similar_pairs, unsigned short** scores, unsigned int* size,
@@ -27,7 +27,7 @@ void checking_block (
  */
 __global__
 void checking_kernel_block (
-	short* partial_scores,
+	int* partial_scores,
 	unsigned int* buckets, unsigned short* scores,
 	unsigned int* pos, unsigned int* len, unsigned int* tokens, float threshold, 
 	unsigned int q_offset, unsigned int i_offset, unsigned int block_size, unsigned int csize
