@@ -53,6 +53,7 @@ int main (int argc, char** argv)
 
 
     fprintf(stderr, "Document: %s\n", filepath);
+    fprintf(stderr, "Algorithm: %s\n", "fgssjoin");
     fprintf(stderr, "Threshold: Jaccard %g\n", threshold);
 
 
