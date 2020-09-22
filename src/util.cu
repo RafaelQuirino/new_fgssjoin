@@ -14,8 +14,27 @@ void get_grid_config (dim3 &grid, dim3 &threads)
 		//Adjust the grid dimensions based on the device properties
 		int num_blocks = 1024 * 2 * devProp.multiProcessorCount;
 		lgrid = dim3(num_blocks);
-		lthreads = dim3(devProp.maxThreadsPerBlock / 4);
+		lthreads = dim3(devProp.maxThreadsPerBlock / 1);
 		flag = 1;
+    }
+    grid = lgrid;
+    threads = lthreads;
+}
+
+void get_grid_config_block (dim3 &grid, dim3 &threads, int n)
+{
+    //Get the device properties
+    static bool flag = 0;
+    static dim3 lgrid, lthreads;
+    if (!flag) {
+        cudaDeviceProp devProp;
+        cudaGetDeviceProperties(&devProp, 0);
+
+        //Adjust the grid dimensions based on the device properties
+        int num_blocks = n; //1024 * 2 * devProp.multiProcessorCount;
+        lgrid = dim3(num_blocks);
+        lthreads = dim3(devProp.maxThreadsPerBlock / 1);
+        flag = 1;
     }
     grid = lgrid;
     threads = lthreads;
