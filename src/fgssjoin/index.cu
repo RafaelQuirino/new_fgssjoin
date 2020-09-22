@@ -7,12 +7,14 @@
  *  DOCUMENTATION
  */
 __host__ 
-Index inverted_index (sets_t* sets, float threshold) 
+Index inverted_index (sets_t* sets, float threshold, char verbose) 
 {
 	unsigned long t0, t1;
 
-	fprintf(stderr, "* Building inverted index...\n");
-    t0 = ut_get_time_in_microseconds();
+    if (verbose) {
+        fprintf(stderr, "* Building inverted index...\n");
+        t0 = ut_get_time_in_microseconds();
+    }
 
     Entry* d_entries = create_midpref_entries(sets, sets->num_midpref_tokens, 0, sets->num_sets);
 
@@ -40,9 +42,11 @@ Index inverted_index (sets_t* sets, float threshold)
     Index index = Index(d_lists, d_index, d_count, num_sets, num_terms, num_entries);
     gpu(cudaFree(d_entries));
 
-    t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
-
+    if (verbose) {
+        t1 = ut_get_time_in_microseconds();
+        fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    }
+    
     return index;
 }
 

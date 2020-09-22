@@ -11,7 +11,8 @@ void filtering_block (
 	short* d_partial_scores, unsigned int* d_comp_buckets, int* d_nres, 
 	unsigned int bsize, float threshold, unsigned int q_offset, unsigned int i_offset, 
 	unsigned int block_size, unsigned int n_queries,
-	unsigned int** d_candidates, unsigned int* candidates_size
+	unsigned int** d_candidates, unsigned int* candidates_size,
+	char verbose
 )
 {
 	unsigned long t0, t1;
@@ -23,8 +24,10 @@ void filtering_block (
 
 
 	// CALLING THE FILTERING KERNEL ---------------------------------------------------------------
-    // fprintf(stderr, "\t\t\t* Calling filtering_kernel... ");
-	// t0 = ut_get_time_in_microseconds();
+    if (verbose) {
+    	fprintf(stderr, "\t\t\t* Calling filtering_kernel... ");
+		t0 = ut_get_time_in_microseconds();
+	}
 
 	filtering_kernel_block <<<grid,block>>> (
 		inv_index.d_lists, inv_index.d_count, inv_index.d_index,
@@ -33,14 +36,18 @@ void filtering_block (
 	);
 	gpu(cudaDeviceSynchronize());
 
-	// t1 = ut_get_time_in_microseconds();
-	// fprintf(stderr, "%g ms.\n", ut_interval_in_miliseconds(t0,t1));
+	if (verbose) {
+		t1 = ut_get_time_in_microseconds();
+		fprintf(stderr, "%g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    }
     //---------------------------------------------------------------------------------------------
 
 
     // COMPACTING FILTERED CANDIDATES -------------------------------------------------------------
-	// fprintf(stderr, "\t\t\t* Compacting filtered buckets... ");
-	// t0 = ut_get_time_in_microseconds();
+	if (verbose) {
+        fprintf(stderr, "\t\t\t* Compacting filtered buckets... ");
+        t0 = ut_get_time_in_microseconds();
+    }
 
 	gpu(cudaMemset(d_nres, 0, sizeof(int)));
 	filter_k <<<grid,block>>> (d_comp_buckets, d_partial_scores, d_nres, bsize);
@@ -51,8 +58,10 @@ void filtering_block (
 	gpu(cudaMemcpy(&nres, d_nres, sizeof(int), cudaMemcpyDeviceToHost));
 	unsigned int comp_buckets_size = (unsigned int) nres;
 
-	// t1 = ut_get_time_in_microseconds();
-	// fprintf(stderr, "%g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    if (verbose) {
+        t1 = ut_get_time_in_microseconds();
+        fprintf(stderr, "%g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    }
     //---------------------------------------------------------------------------------------------
 
 
@@ -96,9 +105,13 @@ void filtering_kernel_block (
 				unsigned int source = (unsigned int) e.set_id;
 				unsigned int source_tpos = (unsigned int) e.pos;
 
-                unsigned long bucket = ((query - q_offset) * block_size) + (source - i_offset);
-
-				if (query < source && source >= i_offset && source < i_offset + block_size && scores[ bucket ] >= 0)
+                /*
+                 *  This was necessary since the inverted index is now complete
+                 *  and not just a block index as before. So we have to check 
+                 *  whether the set there is in the bounds of the index block
+                 */
+                // if (query < source)
+                if (query < source && source >= i_offset && source < i_offset + block_size)
                 {
                 	unsigned int source_len = len[ source ];
 
@@ -110,10 +123,10 @@ void filtering_kernel_block (
                         query_len < source_jac_min_size ||
                         query_len > source_jac_max_size)
                     {
-                    	scores[ bucket ] = -1;
 						continue;
 					}
 
+                    unsigned long bucket = ((query - q_offset) * block_size) + (source - i_offset);
                     short score = scores[ bucket ];
 
                     if (score >= 0)

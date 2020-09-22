@@ -18,7 +18,8 @@ void filtering_block (
 	short* d_partial_scores, unsigned int* d_comp_buckets, int* d_nres, 
 	unsigned int bsize, float threshold, unsigned int q_offset, unsigned int s_offset, 
 	unsigned int block_size, unsigned int n_queries,
-	unsigned int** candidates, unsigned int* candidates_size
+	unsigned int** candidates, unsigned int* candidates_size,
+	char verbose
 );
 
 

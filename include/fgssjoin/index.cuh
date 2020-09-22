@@ -1,8 +1,8 @@
 #ifndef _INDEX_CUH_
 #define _INDEX_CUH_
 
-#include "string/data.cuh"
 #include "util.cuh"
+#include "data.cuh"
 
 
 
@@ -53,7 +53,7 @@ struct Index
  *  DOCUMENTATION
  */
 __host__ 
-Index inverted_index (sets_t* sets, float threshold);
+Index inverted_index (sets_t* sets, float threshold, char verbose);
 
 
 

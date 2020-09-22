@@ -1,4 +1,4 @@
-#include "../../include/fgssjoin/string/data.cuh"
+#include "../../include/fgssjoin/data.cuh"
 #include "io.hpp"
 #include "util.hpp"
 #include "util.cuh"
@@ -13,14 +13,14 @@
 __host__
 sets_t* sets_new ()
 {
-	sets_t* sets = (sets_t*) malloc(sizeof(sets_t));
-	
-	sets->id     = (unsigned int*) malloc(sizeof(unsigned int));
-	sets->pos    = (unsigned int*) malloc(sizeof(unsigned int));
-	sets->len    = (unsigned int*) malloc(sizeof(unsigned int));
-	sets->tokens = (unsigned int*) malloc(sizeof(unsigned int));
+    sets_t* sets = (sets_t*) malloc(sizeof(sets_t));
 
-	return sets;
+    sets->id     = (unsigned int*) malloc(sizeof(unsigned int));
+    sets->pos    = (unsigned int*) malloc(sizeof(unsigned int));
+    sets->len    = (unsigned int*) malloc(sizeof(unsigned int));
+    sets->tokens = (unsigned int*) malloc(sizeof(unsigned int));
+
+    return sets;
 }
 
 
@@ -29,98 +29,104 @@ sets_t* sets_new ()
  *  DOCUMENTATION
  */
 __host__
-sets_t* ppjoin_format (const char* filepath)
+sets_t* ppjoin_format (const char* filepath, char verbose)
 {
-	unsigned long t0, t1;
-	fprintf(stderr, "* Reading %s...\n", filepath);
-	t0 = ut_get_time_in_microseconds();
+    unsigned long t0, t1;
+    if (verbose) {
+        fprintf(stderr, "* Reading %s...\n", filepath);
+        t0 = ut_get_time_in_microseconds();
+    }
 
-	int     sets_count    = 0;
-	int     terms_count   = 0;
-	int     tokens_count  = 0;
-	int*    intbuff       = (int*) malloc(sizeof(int));
-	sets_t* sets          = sets_new();
+    int     sets_count    = 0;
+    int     terms_count   = 0;
+    int     tokens_count  = 0;
+    int*    intbuff       = (int*) malloc(sizeof(int));
+    sets_t* sets          = sets_new();
 
-	FILE* f = fopen(filepath, "rb");
-	if (f == NULL) { fputs("File error", stderr); exit(1); }
+    FILE* f = fopen(filepath, "rb");
+    if (f == NULL) { fputs("File error", stderr); exit(1); }
 
-	vector<unsigned int> vecids;
-	vector<unsigned int> veclens;
-	vector< vector<unsigned int> > vecsets;
+    vector<unsigned int> vecids;
+    vector<unsigned int> veclens;
+    vector< vector<unsigned int> > vecsets;
 
-	while (1) {
-		int res, size = 0, *tokens;
+    while (1) {
+        int res, size = 0, *tokens;
 
-		res = fread(intbuff, sizeof(int), 1, f);
-		if (res == 1)
-			vecids.push_back((unsigned int) *intbuff);
-		else
-			break;
+        res = fread(intbuff, sizeof(int), 1, f);
+        if (res == 1)
+            vecids.push_back((unsigned int) *intbuff);
+        else
+            break;
 		
-		res = fread(intbuff, sizeof(int), 1, f);
-		if (res == 1) {
-			size = *intbuff;
-			veclens.push_back((unsigned int) size);
-		} else {
-			fprintf(stdout, "Reading error.\n");
-			exit(1);
-		}
+        res = fread(intbuff, sizeof(int), 1, f);
+        if (res == 1) {
+            size = *intbuff;
+            veclens.push_back((unsigned int) size);
+        } else {
+            fprintf(stdout, "Reading error.\n");
+            exit(1);
+        }
 
-		tokens = (int*) malloc(size * sizeof(int));
-		vector<unsigned int> vecset;
-		res = fread(tokens, sizeof(int), size, f);
-		if (res == size) {
-			for (int i = 0; i < size; i++) {
-				vecset.push_back((unsigned int) tokens[i]);
-				if (tokens[i] >= terms_count)
-					terms_count = tokens[i] + 1;
-			}
-			vecsets.push_back(vecset);
-			free(tokens);
-		} else {
-			fprintf(stdout, "Reading error.\n");
-			exit(1);
-		}
+        tokens = (int*) malloc(size * sizeof(int));
+        vector<unsigned int> vecset;
+        res = fread(tokens, sizeof(int), size, f);
+        if (res == size) {
+            for (int i = 0; i < size; i++) {
+                vecset.push_back((unsigned int) tokens[i]);
+                if (tokens[i] >= terms_count)
+                    terms_count = tokens[i] + 1;
+            }
+            vecsets.push_back(vecset);
+            free(tokens);
+        } else {
+            fprintf(stdout, "Reading error.\n");
+            exit(1);
+        }
 
-		sets_count   += 1;
-		tokens_count += size;
-	}
+        sets_count   += 1;
+        tokens_count += size;
+    }
 
-	fclose(f);
+    fclose(f);
 
-	sets->num_sets   = sets_count;
-	sets->num_terms  = terms_count;
-	sets->num_tokens = tokens_count;
+    sets->num_sets   = sets_count;
+    sets->num_terms  = terms_count;
+    sets->num_tokens = tokens_count;
 
-	sets->id  = (unsigned int*) realloc(sets->id, sets_count * sizeof(unsigned int));
-	sets->len = (unsigned int*) realloc(sets->len, sets_count * sizeof(unsigned int));
-	for (int i = 0; i < sets_count; i++) {
-		sets->id[i]  = vecids[sets_count-1-i];
-		sets->len[i] = veclens[sets_count-1-i];
-	}
-	vecids.clear();
-	veclens.clear();
+    sets->id  = (unsigned int*) realloc(sets->id, sets_count * sizeof(unsigned int));
+    sets->len = (unsigned int*) realloc(sets->len, sets_count * sizeof(unsigned int));
+    for (int i = 0; i < sets_count; i++) {
+        sets->id[i]  = vecids[sets_count-1-i];
+        sets->len[i] = veclens[sets_count-1-i];
+        sets->average_size += sets->len[i];
+    }
+    sets->average_size /= sets->num_sets;
+    vecids.clear();
+    veclens.clear();
 
-	size_t tmp = 0;
-	sets->tokens = (unsigned int*) realloc(sets->tokens, tokens_count * sizeof(unsigned int));
-	for (int i = sets_count-1; i >= 0; i--)
-		for (int j = 0; j < vecsets[i].size(); j++)
-			sets->tokens[tmp++] = vecsets[i][j];
-	vecsets.clear();
+    size_t tmp = 0;
+    sets->tokens = (unsigned int*) realloc(sets->tokens, tokens_count * sizeof(unsigned int));
+    for (int i = sets_count-1; i >= 0; i--)
+        for (int j = 0; j < vecsets[i].size(); j++)
+            sets->tokens[tmp++] = vecsets[i][j];
+    vecsets.clear();
 
-	sets->pos = (unsigned int*) malloc(sets_count * sizeof(unsigned int));
-	sets->pos[0] = 0;
-	for (int i = 1; i < sets_count; i++)
-		sets->pos[i] = sets->pos[i-1] + sets->len[i-1];
+    sets->pos = (unsigned int*) malloc(sets_count * sizeof(unsigned int));
+    sets->pos[0] = 0;
+    for (int i = 1; i < sets_count; i++)
+        sets->pos[i] = sets->pos[i-1] + sets->len[i-1];
 
-	t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    if (verbose) {
+        t1 = ut_get_time_in_microseconds();
+        fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
+        fprintf(stderr, "Number of sets: %zu\n", sets->num_sets);
+        fprintf(stderr, "Number of terms: %zu\n", sets->num_terms);
+        fprintf(stderr, "Number of tokens: %zu\n", sets->num_tokens);
+        fprintf(stderr, "Average size: %g\n", sets->average_size);
+    }
 
-    fprintf(stderr, "Number of sets: %zu\n", sets->num_sets);
-	fprintf(stderr, "Number of terms: %zu\n", sets->num_terms);
-	fprintf(stderr, "Number of tokens: %zu\n", sets->num_tokens);
-
-	return sets;
+    return sets;
 }
 
 
@@ -129,7 +135,7 @@ sets_t* ppjoin_format (const char* filepath)
  *  DOCUMENTATION
  */
 __host__
-void prepare_data (sets_t* sets, float threshold)
+void prepare_data (sets_t* sets, float threshold, char verbose)
 {
 	unsigned long t0, t1;
 
@@ -137,9 +143,10 @@ void prepare_data (sets_t* sets, float threshold)
     get_grid_config(grid, block);
 
 	// --------------------------------------------------------------------------------------------
-
-    fprintf(stderr, "* Sending data to device...\n");
-    t0 = ut_get_time_in_microseconds();
+    if (verbose) {
+        fprintf(stderr, "* Sending data to device...\n");
+        t0 = ut_get_time_in_microseconds();
+    }
 
     gpu(cudaMalloc(&sets->d_pos, sets->num_sets * sizeof(unsigned int)));
     gpu(cudaMalloc(&sets->d_len, sets->num_sets * sizeof(unsigned int)));
@@ -149,13 +156,15 @@ void prepare_data (sets_t* sets, float threshold)
     gpu(cudaMemcpy(sets->d_len, sets->len, sets->num_sets * sizeof(unsigned int), cudaMemcpyHostToDevice));
     gpu(cudaMemcpy(sets->d_tokens, sets->tokens, sets->num_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
-
+    if (verbose) {
+        t1 = ut_get_time_in_microseconds();
+        fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    }
     // --------------------------------------------------------------------------------------------
-
-    fprintf(stderr, "* Creating mid_prefix tokens...\n");
-    t0 = ut_get_time_in_microseconds();
+    if (verbose) {
+        fprintf(stderr, "* Creating mid_prefix tokens...\n");
+        t0 = ut_get_time_in_microseconds();
+    }
 
     unsigned int* d_bin;
     unsigned int* d_scan;
@@ -186,9 +195,10 @@ void prepare_data (sets_t* sets, float threshold)
     gpu(cudaFree(d_bin));
     gpu(cudaFree(d_scan));
 
-    t1 = ut_get_time_in_microseconds();
-    fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
-
+    if (verbose) {
+        t1 = ut_get_time_in_microseconds();
+        fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
+    }
     //---------------------------------------------------------------------------------------------
 }
 

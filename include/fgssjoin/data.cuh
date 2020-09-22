@@ -44,6 +44,9 @@ typedef struct
 	unsigned int* d_midpref_len;
 	unsigned int* d_midpref_tokens;
 
+	// Statistics
+	float average_size;
+
 } sets_t;
 
 
@@ -60,7 +63,7 @@ sets_t* sets_new ();
  *  DOCUMENTATION
  */
 __host__
-sets_t* ppjoin_format (const char* filepath);
+sets_t* ppjoin_format (const char* filepath, char verbose);
 
 
 
@@ -68,7 +71,7 @@ sets_t* ppjoin_format (const char* filepath);
  *  DOCUMENTATION
  */
 __host__
-void prepare_data (sets_t* sets, float threshold);
+void prepare_data (sets_t* sets, float threshold, char verbose);
 
 
 

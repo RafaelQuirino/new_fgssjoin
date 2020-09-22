@@ -3,8 +3,8 @@
 
 #include "util.hpp"
 #include "util.cuh"
+#include "data.cuh"
 #include "similarity.cuh"
-#include "string/data.cuh"
 
 
 

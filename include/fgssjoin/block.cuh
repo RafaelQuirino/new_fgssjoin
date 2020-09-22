@@ -1,9 +1,9 @@
 #ifndef _BLOCK_CUH_
 #define _BLOCK_CUH_
 
-#include "string/data.cuh"
-#include "index.cuh"
 #include "util.cuh"
+#include "data.cuh"
+#include "index.cuh"
 
 
 
@@ -11,7 +11,7 @@
  *  DOCUMENTATION
  */
 __host__
-void process_blocks (sets_t* sets, Index index, float threshold); //, int size);
+void process_blocks (sets_t* sets, Index index, float threshold, char verbose);
 
 
 
