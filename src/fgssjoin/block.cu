@@ -18,7 +18,7 @@ void print_separator ()
 /*
  *  DOCUMENTATION
  */
-int get_block_size (char verbose) 
+int get_block_size (float threshold, char verbose) 
 {
     size_t uCurAvailMemoryInBytes;
     size_t uTotalMemoryInBytes;
@@ -49,8 +49,10 @@ int get_block_size (char verbose)
         // cuCtxDetach( context ); // Destroy context
     // }
 
-    float limit = 0.95; // Percentage of available memory to take
+    float limit = 0.8; // Percentage of available memory to take
     int block_size = floor(floor(sqrt((float)uCurAvailMemoryInBytes/6)) * limit);
+    if (limit == 0.0)
+        block_size = 1;
 
     return block_size;
 }
@@ -69,10 +71,11 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
     unsigned long t0, t1;
     unsigned long sim_pairs_count = 0;
     unsigned long candidates_count = 0;
+    unsigned long candidates_checked_count = 0;
     double t;
 
     // Getting the block size -----------------------------
-    int block_size = get_block_size(verbose);
+    int block_size = get_block_size(threshold, verbose);
     if (verbose)
         fprintf(stderr, "block_size: %d\n", block_size);
     //-----------------------------------------------------
@@ -162,12 +165,14 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
 
             unsigned int *similar_pairs;
             unsigned short *scores;
+            unsigned int size;
 
             checking_block (
                 d_partial_scores,
                 d_candidates, sets, threshold, csize,
                 q_offset, i_offset, block_size,
-                &similar_pairs, &scores
+                &similar_pairs, &scores, &size,
+                d_compidx, verbose
             );
 
             if (verbose) {
@@ -177,10 +182,11 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
             //----------------------------------------------------------------------
 
             candidates_count += csize;
+            candidates_checked_count += size;
 
-            int x = 0;
+            int x = 0, y = 0;
             t0 = ut_get_time_in_microseconds();
-            for (unsigned k = 0; k < csize; k++) {
+            for (unsigned k = 0; k < size; k++) {
                 unsigned int   bucket = similar_pairs[k];
                 unsigned int   query  = (bucket / block_size) + q_offset;
                 unsigned int   source = (bucket % block_size) + i_offset;
@@ -191,13 +197,14 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
                     if (similarity >= threshold)  {
                         fprintf(stdout, "%d %d %f\n", sets->id[query], sets->id[source], similarity);
                         sim_pairs_count++;
-                        x++;
+                        y++;
                     }
                 }
+                x++;
             }
             t1 = ut_get_time_in_microseconds();
             t += ut_interval_in_miliseconds(t0,t1);
-            fprintf(stderr, "%u, %d\n", csize, x);
+            // fprintf(stderr, "{ %u, %u, %d }\n", csize, x, y);
 
             free(similar_pairs);
             free(scores);
@@ -208,6 +215,7 @@ void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbos
     }
 
     fprintf(stderr, "# Candidates: %lu\n", candidates_count);
+    fprintf(stderr, "# Intersections: %lu\n", candidates_checked_count);
     fprintf(stderr, "# Results: %lu\n", sim_pairs_count);
-    fprintf(stderr, "# Time rendering results: %g ms\n", t);
+    fprintf(stderr, "  - Time rendering: %g ms\n", t);
 }
