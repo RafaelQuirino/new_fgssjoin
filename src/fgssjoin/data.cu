@@ -120,10 +120,6 @@ sets_t* ppjoin_format (const char* filepath, char verbose)
     if (verbose) {
         t1 = ut_get_time_in_microseconds();
         fprintf(stderr, "  - Done. It took %g ms.\n", ut_interval_in_miliseconds(t0,t1));
-        fprintf(stderr, "Number of sets: %zu\n", sets->num_sets);
-        fprintf(stderr, "Number of terms: %zu\n", sets->num_terms);
-        fprintf(stderr, "Number of tokens: %zu\n", sets->num_tokens);
-        fprintf(stderr, "Average size: %g\n", sets->average_size);
     }
 
     return sets;
