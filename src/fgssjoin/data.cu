@@ -33,7 +33,7 @@ sets_t* ppjoin_format (const char* filepath)
 {
 	unsigned long t0, t1;
 	fprintf(stderr, "* Reading %s...\n", filepath);
-    t0 = ut_get_time_in_microseconds();
+	t0 = ut_get_time_in_microseconds();
 
 	int     sets_count    = 0;
 	int     terms_count   = 0;
