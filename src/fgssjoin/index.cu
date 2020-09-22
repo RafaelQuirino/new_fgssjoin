@@ -79,7 +79,7 @@ void print_inverted_index (Index invindex, sets_t* sets)
 
 	free(index);
 	free(count);
-	free(index);
+	free(entries);
 }
 
 
