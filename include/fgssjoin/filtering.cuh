@@ -37,6 +37,10 @@ void filtering_kernel_block (
 
 
 
+//================================================================================================
+
+
+
 /*
  *  DOCUMENTATION
  */
@@ -61,6 +65,37 @@ void filtering_kernel_block_new (
 	unsigned int* pos, unsigned int* len, unsigned int* tokens, int* scores, 
 	float threshold, unsigned int q_offset, unsigned i_offset, 
 	unsigned int block_size, unsigned int n
+);
+
+
+
+//================================================================================================
+
+
+
+/*
+ *  DOCUMENTATION
+ */
+__host__
+void filtering_block_very_new (
+	sets_t* sets, Index inv_index, short* d_partial_scores, 
+	float threshold, unsigned int q_offset, unsigned int i_offset, 
+	unsigned int block_size, unsigned int n_queries, 
+	unsigned int* csize_out, int* d_nres,
+	char verbose
+);
+
+
+
+/*
+ *  DOCUMENTATION
+ */
+__global__
+void filtering_kernel_block_very_new (
+	Entry* inv_index, int* count, int* index,
+	unsigned int* pos, unsigned int* len, unsigned int* tokens, short* scores, 
+	float threshold, unsigned int q_offset, unsigned i_offset, 
+	unsigned int block_size, int* d_nres, unsigned int n
 );
 
 

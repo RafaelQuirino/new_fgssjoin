@@ -49,7 +49,7 @@ int main (int argc, char** argv)
     }
 
 
-    unsigned long t0, t1;
+    unsigned long t0, t1, t00, t01;
 
 
     fprintf(stderr, "Document: %s\n", filepath);
@@ -74,15 +74,18 @@ int main (int argc, char** argv)
     }
 
 
-    // Prepare data and transfer to gpu memory
-    prepare_data(sets, threshold, verbose);
-
-
     // Run fgssjoin
     fprintf(stderr, "=== BEGIN JOIN (TIMER STARTED) ===\n");
     t0 = ut_get_time_in_microseconds();
 
     cudaSetDevice(0);
+
+    // Prepare data and transfer to gpu memory
+    fprintf(stderr, "# Preparing and transfering...\n");
+    t00 = ut_get_time_in_microseconds();
+    prepare_data(sets, threshold, verbose);
+    t01 = ut_get_time_in_microseconds();
+    fprintf(stderr, "  - Time spent: %g ms\n", ut_interval_in_miliseconds(t00,t01));
 
     // Build inverted index
     Index index = inverted_index(sets, threshold, verbose);
@@ -90,7 +93,10 @@ int main (int argc, char** argv)
     if (debug)
         print_inverted_index(index, sets);
 
-    process_blocks(sets, index, threshold, verbose);
+    // Process filtering/checking block pairs
+    // process_blocks(sets, index, threshold, verbose);
+    // process_blocks_int(sets, index, threshold, verbose);
+    process_blocks_very_new(sets, index, threshold, verbose);
 	
     t1 = ut_get_time_in_microseconds();
     fprintf(stderr, "===  END JOIN (TIMER STOPPED)  ===\n");
