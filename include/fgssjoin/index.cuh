@@ -50,6 +50,17 @@ struct Index
 
 
 /*
+ *  DOCUMENTATIONS
+ */
+__host__ 
+Index new_inverted_index_block (
+    sets_t* sets, float threshold, 
+    unsigned int offset, unsigned int block_size
+);
+
+
+
+/*
  *  DOCUMENTATION
  */
 __host__ 

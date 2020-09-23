@@ -384,7 +384,7 @@ void checking_block_very_new (
     unsigned long t0, t1;
 
     if (verbose) {
-        fprintf(stderr, "\n\t\t\t* Compacting checked buckets... ");
+        fprintf(stderr, "\n\t\t\t* Compacting... ");
         t0 = ut_get_time_in_microseconds();
     }
 

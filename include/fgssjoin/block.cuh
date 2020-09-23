@@ -19,6 +19,14 @@ void process_blocks (sets_t* sets, Index index, float threshold, char verbose);
  *  DOCUMENTATION
  */
 __host__
+void process_blocks_index (sets_t* sets, float threshold, char verbose);
+
+
+
+/*
+ *  DOCUMENTATION
+ */
+__host__
 void process_blocks_int (sets_t* sets, Index index, float threshold, char verbose);
 
 

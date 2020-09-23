@@ -93,10 +93,15 @@ int main (int argc, char** argv)
     if (debug)
         print_inverted_index(index, sets);
 
-    // Process filtering/checking block pairs
+    //---------------------------------------------------------------
+    // Process index*/filtering/checking block pairs
+    // * Only for process_blocks_index
+    //---------------------------------------------------------------
     // process_blocks(sets, index, threshold, verbose);
+    process_blocks_index(sets, threshold, verbose);
     // process_blocks_int(sets, index, threshold, verbose);
-    process_blocks_very_new(sets, index, threshold, verbose);
+    // process_blocks_very_new(sets, index, threshold, verbose);
+    //---------------------------------------------------------------
 	
     t1 = ut_get_time_in_microseconds();
     fprintf(stderr, "===  END JOIN (TIMER STOPPED)  ===\n");

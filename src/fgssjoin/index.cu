@@ -1,5 +1,61 @@
-#include "index.cuh"
 #include "scan.cuh"
+#include "index.cuh"
+#include "similarity.cuh"
+
+
+
+/*
+ *  DOCUMENTATIONS
+ */
+__host__ 
+Index new_inverted_index_block (
+    sets_t* sets, float threshold, 
+    unsigned int offset, unsigned int block_size
+)
+{
+    vector<Entry> entries;
+    for (unsigned i = offset; i < offset+block_size; i++) {
+        unsigned int pos = sets->pos[i], len = sets->len[i];
+        unsigned int prefsize = jac_mid_prefix(len, threshold);
+
+        for (unsigned j = 0; j < prefsize; j++) {
+            unsigned int term = sets->tokens[pos + j];
+            entries.push_back(Entry((int)i, (int)term, (int)j));
+        }
+    }
+
+    Entry* d_entries;
+    gpu(cudaMalloc(&d_entries, entries.size() * sizeof(Entry)));
+    gpu(cudaMemcpy(d_entries, &entries[0], entries.size() * sizeof(Entry), cudaMemcpyHostToDevice));
+
+
+    int num_docs = (int) sets->num_sets;
+    int num_terms = (int) sets->num_terms;
+    int num_entries = (int) entries.size();
+    Entry *d_lists;
+    int *d_count, *d_index;
+
+
+    gpu(cudaMalloc(&d_lists, num_entries * sizeof(Entry)));
+    gpu(cudaMalloc(&d_index, num_terms * sizeof(int)));
+    gpu(cudaMalloc(&d_count, num_terms * sizeof(int)));   
+    gpu(cudaMemset(d_count, 0, num_terms * sizeof(int)));
+
+
+    dim3 grid, block;
+    get_grid_config(grid, block);
+    df_count_kernel <<<grid, block>>> (d_entries, d_count, num_entries);     
+    exclusive_scan <int> (d_count, d_index, num_terms);
+    inverted_index_kernel <<<grid, block>>> (d_entries, d_lists, d_index, num_entries);
+    gpuAssert(cudaDeviceSynchronize());
+
+
+    Index inv = Index(d_lists, d_index, d_count, num_docs, num_terms, num_entries);
+    gpu(cudaFree(d_entries));
+
+
+    return inv;   
+}
 
 
 

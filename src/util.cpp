@@ -88,8 +88,8 @@ double ut_interval_in_miliseconds (unsigned long t0, unsigned long t1)
 void ut_print_separator (const char* str, int size)
 {
     int i; // size = 90;
-    for (i = 0; i < size; i++) printf("%s", str);
-    printf("\n");
+    for (i = 0; i < size; i++) fprintf(stderr, "%s", str);
+    fprintf(stderr, "\n");
 }
 
 
