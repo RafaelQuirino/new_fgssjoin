@@ -61,8 +61,8 @@ int get_block_size (sets_t* sets, float threshold, char verbose)
 __host__
 void process_blocks (sets_t* sets, Index inv_index, float threshold, char verbose)
 {
-    if (verbose)
-        fprintf(stderr, "\nBlock processing.\n");
+    if (verbose || 1)
+        fprintf(stderr, "> Block processing with static index.\n");
 
     unsigned long t0, t1;
     unsigned long sim_pairs_count = 0;
@@ -273,8 +273,8 @@ int get_block_size_index (sets_t* sets, float threshold, char verbose)
 __host__
 void process_blocks_index (sets_t* sets, float threshold, char verbose)
 {
-    if (verbose)
-        fprintf(stderr, "\nBlock processing with index construction.\n");
+    if (verbose || 1)
+        fprintf(stderr, "> Block processing with index block construction.\n");
 
     unsigned long t0, t1;
     unsigned long sim_pairs_count = 0;
@@ -494,8 +494,8 @@ int get_block_size_int (sets_t* sets, float threshold, char verbose)
 __host__
 void process_blocks_int (sets_t* sets, Index inv_index, float threshold, char verbose)
 {
-    if (verbose)
-        fprintf(stderr, "\nBlock processing.\n");
+    if (verbose || 1)
+        fprintf(stderr, "> Block processing, one cuda block per set.\n");
 
     unsigned long t0, t1;
     unsigned long sim_pairs_count = 0;
@@ -706,8 +706,8 @@ int get_block_size_very_new (sets_t* sets, float threshold, char verbose)
 __host__
 void process_blocks_very_new (sets_t* sets, Index inv_index, float threshold, char verbose)
 {
-    if (verbose)
-        fprintf(stderr, "\nBlock processing.\n");
+    if (verbose || 1)
+        fprintf(stderr, "> Block processing with no partial_scores compaction.\n");
 
     unsigned long t0, t1;
     unsigned long sim_pairs_count = 0;

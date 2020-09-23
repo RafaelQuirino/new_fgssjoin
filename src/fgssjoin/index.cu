@@ -5,6 +5,110 @@
 
 
 /*
+ *  DOCUMENTATION
+ */
+Entry* create_midpref_entries (
+    sets_t* sets, unsigned int* d_entry_pos, 
+    unsigned int n_entries, unsigned int offset, unsigned int block_size
+)
+{
+    dim3 grid, block;
+    get_grid_config(grid, block);
+    Entry* d_entries;
+    gpuAssert(cudaMalloc(&d_entries, n_entries * sizeof(Entry)));
+    midpref_kernel <<<grid, block>>> (
+        d_entries, sets->d_midpref_pos, sets->d_midpref_len,
+        sets->d_midpref_tokens, d_entry_pos, offset, block_size
+    );
+    gpu(cudaDeviceSynchronize());
+
+    return d_entries;
+}
+
+
+
+/*
+ *  DOCUMENTATION
+ */
+__global__
+void midpref_kernel (
+    Entry* entries, unsigned int* midpref_pos, unsigned int* midpref_len,
+    unsigned int* midpref_tokens, unsigned int* entry_pos, 
+    unsigned int offset, unsigned int n_sets
+)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int i = idx; i < n_sets; i += blockDim.x * gridDim.x)
+    {
+        int x = i + offset;
+        for (unsigned j = 0; j < midpref_len[x]; j++) 
+        {
+            int set = x;
+            int idx = midpref_pos[x] + j;
+            int token = midpref_tokens[idx];
+            entries[entry_pos[i] + j].set_id = set;
+            entries[entry_pos[i] + j].term_id = token;
+            entries[entry_pos[i] + j].pos = (int) j;
+        }
+    }
+}
+
+
+
+/*
+ *  DOCUMENTATION
+ */
+__host__ 
+Index inverted_index_block (
+    sets_t* sets, float threshold, 
+    unsigned int offset, unsigned int block_size
+) 
+{
+    unsigned int *d_entry_pos, n_entries, last_midpref;
+    gpu(cudaMalloc(&d_entry_pos, block_size * sizeof(unsigned int)));
+
+    exclusive_scan <unsigned int> (sets->d_midpref_len + offset, d_entry_pos, block_size);
+    
+    gpu(cudaMemcpy(&n_entries, d_entry_pos+(block_size-1), sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    gpu(cudaMemcpy(&last_midpref, sets->d_midpref_len+(offset+block_size-1), sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    n_entries += last_midpref;
+    
+    Entry* d_entries = create_midpref_entries(sets, d_entry_pos, n_entries, offset, block_size);
+    gpu(cudaFree(d_entry_pos));
+
+
+
+    int num_docs = (int) sets->num_sets;
+    int num_terms = (int) sets->num_terms;
+    int num_entries = (int) n_entries;
+    Entry *d_lists;
+    int *d_count, *d_index;
+
+
+    gpu(cudaMalloc(&d_lists, num_entries * sizeof(Entry)));
+    gpu(cudaMalloc(&d_index, num_terms * sizeof(int)));
+    gpu(cudaMalloc(&d_count, num_terms * sizeof(int)));   
+    gpu(cudaMemset(d_count, 0, num_terms * sizeof(int)));
+
+
+    dim3 grid, block;
+    get_grid_config(grid, block);
+    df_count_kernel <<<grid, block>>> (d_entries, d_count, num_entries);     
+    exclusive_scan <int> (d_count, d_index, num_terms);
+    inverted_index_kernel <<<grid, block>>> (d_entries, d_lists, d_index, num_entries);
+    gpuAssert(cudaDeviceSynchronize());
+
+
+    Index inv = Index(d_lists, d_index, d_count, num_docs, num_terms, num_entries);
+    gpuAssert(cudaFree(d_entries));
+
+
+    return inv;
+}
+
+
+
+/*
  *  DOCUMENTATIONS
  */
 __host__ 
